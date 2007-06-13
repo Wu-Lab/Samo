@@ -44,7 +44,7 @@ F90=df.exe
 # ADD BASE F90 /compile_only /nologo /warn:nofileopt
 # ADD F90 /compile_only /nologo /warn:nofileopt
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
-# ADD CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
 # ADD BASE RSC /l 0x804 /d "NDEBUG"
 # ADD RSC /l 0x804 /d "NDEBUG"
 BSC32=bscmake.exe
@@ -164,10 +164,6 @@ SOURCE=.\Samo.h
 # Begin Source File
 
 SOURCE=.\SVD.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\Tree.h
 # End Source File
 # Begin Source File
 

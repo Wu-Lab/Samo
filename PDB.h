@@ -11,6 +11,8 @@
 /////////////////////////////////////////////////////////////////////////////////////
 
 
+#include <vector>
+
 #include "Utils.h"
 
 
@@ -26,25 +28,23 @@ class PDBAtom {
 public:
 	PDBAtom();
 
-	int serial() { return m_serial; }
-	const char *name() { return m_name; }
-	const char *res_name() { return m_res_name; }
-	const char chain_id() { return m_chain_id; }
-	const int pocket_id() { return m_pocket_id; }
-	int res_seq() { return m_res_seq; }
-
-	bool isCa();
-	bool isIdenticalAtom(PDBAtom &atom);
-	bool isIdenticalResidue(PDBAtom &atom);
-
-	const char resCode() { return _getResidueCode(m_res_name); }
-
 	double &operator [](int i) { return m_coord[i]; }
-	void operator =(PDBAtom &atom) { _assign(atom); }
+
+	int serial() const { return m_serial; }
+	const char *name() const { return m_name; }
+	const char *res_name() const { return m_res_name; }
+	const char chain_id() const { return m_chain_id; }
+	const int pocket_id() const { return m_pocket_id; }
+	int res_seq() const { return m_res_seq; }
+
+	bool isCa() const;
+	bool isIdenticalAtom(const PDBAtom &atom) const;
+	bool isIdenticalResidue(const PDBAtom &atom) const;
+
+	const char resCode() const { return _getResidueCode(m_res_name); }
 
 protected:
-	void _assign(PDBAtom &atom);
-	const char _getResidueCode(const char *name);
+	static const char _getResidueCode(const char *name);
 
 	friend class PDB;
 };
@@ -57,16 +57,16 @@ class PDB {
 	char m_classification[41];						// Classifies the molecule(s)
 	StringList m_compound_list;						// Description of the molecular components
 	int m_num_coord;								// Number of atomic coordinate records (ATOM+HETATM)
-	List<PDBAtom> m_atom_list;						// List of atoms
+	vector<PDBAtom> m_atoms;						// List of atoms
 
 public:
 	PDB(const char *filename = NULL);
 
-	const char *filename() { return m_filename; }
-	const char *id_code() { return m_id_code; }
-	const char *dep_date() { return m_dep_date; }
-	const char *classification() { return m_classification; }
-	List<PDBAtom> &atom_list() { return m_atom_list; }
+	const char *filename() const { return m_filename; }
+	const char *id_code() const { return m_id_code; }
+	const char *dep_date() const { return m_dep_date; }
+	const char *classification() const { return m_classification; }
+	vector<PDBAtom> &atoms() { return m_atoms; }
 
 	void setFilename(const char *filename);
 

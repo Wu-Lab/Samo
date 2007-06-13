@@ -3,6 +3,8 @@
 #define __PROTEINCHAIN_H
 
 
+#include <vector>
+
 #include "PDB.h"
 
 
@@ -13,12 +15,11 @@ class ProteinChain {
 	int m_pocket_id;
 	int m_range[2];
 	bool m_is_backbone;
-	int m_length;									// Length of chain
 	char m_name[6];									// Name of chain
 	char m_id_code[5];								// This identifier is unique within PDB
 	char m_dep_date[10];							// Deposition date
 	char m_classification[41];						// Classifies the molecule(s)
-	PDBAtom *m_atoms;								// Atoms
+	vector<PDBAtom> m_atoms;						// Atoms
 
 public:
 	ProteinChain();
@@ -28,7 +29,7 @@ public:
 	char chain_id() { if (m_chain_id == ' ') return '_'; else return m_chain_id; }
 	int pocket_id() { return m_pocket_id; }
 	int range(int i) { return m_range[i]; }
-	int length() { return m_length; }
+	int length() { return m_atoms.size(); }
 	const char *name() { return m_name; }
 	const char *id_code() { return m_id_code; }
 	const char *dep_date() { return m_dep_date; }
@@ -62,8 +63,8 @@ public:
 protected:
 	void _assign(ProteinChain &chain);
 	void _writePDBModel(FILE *fp, int model = 0, double translation[3] = NULL, double rotation[3][3] = NULL);
-	bool _filterChain(PDBAtom *atom);
-	bool _filterPocket(PDBAtom *atom);
+	bool _filterChain(const PDBAtom &atom) const;
+	bool _filterPocket(const PDBAtom &atom) const;
 };
 
 

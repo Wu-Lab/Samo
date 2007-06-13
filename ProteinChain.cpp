@@ -1,6 +1,7 @@
 
-#include <math.h>
-#include <limits.h>
+#include <map>
+#include <numeric>
+#include <limits>
 
 #include "ProteinChain.h"
 
@@ -18,12 +19,10 @@ ProteinChain::ProteinChain()
 	m_pocket_id = 0;
 	m_range[0] = m_range[1] = 0;
 	m_is_backbone = true;
-	m_length = 0;
 	for (i=0; i<6; i++) m_name[i] = 0;
 	for (i=0; i<5; i++) m_id_code[i] = 0;
 	for (i=0; i<10; i++) m_dep_date[i] = 0;
 	for (i=0; i<41; i++) m_classification[i] = 0;
-	m_atoms = NULL;
 }
 
 ProteinChain::~ProteinChain()
@@ -66,7 +65,6 @@ void ProteinChain::setBackbone(bool enable)
 
 void ProteinChain::getChain(PDB *pdb, char cid)
 {
-	PDBAtom *atom;
 	int i;
 
 	if (pdb != NULL) setPDB(pdb);
@@ -86,22 +84,14 @@ void ProteinChain::getChain(PDB *pdb, char cid)
 	if (m_chain_id != ' ') strncat(m_name, &m_chain_id, 1);
 	else strcat(m_name, "_");
 
-	atom = m_pdb->atom_list().getFirst();
-	while (atom != NULL) {
-		if (_filterChain(atom)) m_length++;
-		atom = m_pdb->atom_list().getNext();
+	for (i=0; i<m_pdb->atoms().size(); ++i) {
+		if (_filterChain(m_pdb->atoms()[i])) {
+			m_atoms.push_back(m_pdb->atoms()[i]);
+		}
 	}
-	if (m_length == 0)
+	if (m_atoms.empty())
 	{
 		Logger::warning("Empty chain! PDB file: %s, Chain ID: %c!", m_pdb->filename(), m_chain_id);
-	}
-	m_atoms = new PDBAtom [m_length];
-
-	i = 0;
-	atom = m_pdb->atom_list().getFirst();
-	while (atom != NULL) {
-		if (_filterChain(atom)) m_atoms[i++] = *atom;
-		atom = m_pdb->atom_list().getNext();
 	}
 
 	Logger::debug("Length of the protein chain %s:%c is %d", id_code(), chain_id(), length());
@@ -115,9 +105,10 @@ void ProteinChain::getAllChains(PDB *pdb)
 
 void ProteinChain::getPocketChain(PDB *pdb, int pid)
 {
-	PDBAtom *atom, *last;
-	int res_seq, i, n;
-	double coord[3];
+	int res_seq, i;
+	map<int, int> atoms;
+	map<int, vector<double> > coords;
+	map<int, vector<double> >::iterator ci;
 
 	if (pdb != NULL) setPDB(pdb);
 	if (pid != 0) setPocketID(pid);
@@ -134,69 +125,39 @@ void ProteinChain::getPocketChain(PDB *pdb, int pid)
 	}
 	strcpy(m_name, "POC");
 
-	res_seq = INT_MAX;
-	atom = m_pdb->atom_list().getFirst();
-	while (atom != NULL) {
-		if (_filterPocket(atom) && (atom->res_seq() != res_seq)) {
-			m_length++;
-			res_seq = atom->res_seq();
+	for (i=0; i<m_pdb->atoms().size(); ++i) {
+		if (_filterPocket(m_pdb->atoms()[i])) {
+			res_seq = m_pdb->atoms()[i].res_seq();
+			atoms[res_seq] = i;
+			coords[res_seq][0] += m_pdb->atoms()[i][0];
+			coords[res_seq][1] += m_pdb->atoms()[i][1];
+			coords[res_seq][2] += m_pdb->atoms()[i][2];
+			coords[res_seq][3] += 1.0;
 		}
-		atom = m_pdb->atom_list().getNext();
 	}
-	if (m_length == 0)
+
+	m_atoms.resize(coords.size());
+	ci = coords.begin();
+	for (i=0; i<m_atoms.size(); ++i) {
+		m_atoms[i] = m_pdb->atoms()[atoms[ci->first]];
+		m_atoms[i][0] = ci->second[0] / ci->second[4];
+		m_atoms[i][1] = ci->second[1] / ci->second[4];
+		m_atoms[i][2] = ci->second[2] / ci->second[4];
+		++ci;
+	}
+	if (m_atoms.empty())
 	{
 		Logger::warning("Empty pocket chain! Pocket file: %s, Pocket ID: %d!", m_pdb->filename(), m_pocket_id);
-	}
-	m_atoms = new PDBAtom [m_length];
-
-	i = 0;
-	res_seq = INT_MAX;
-	last = NULL;
-	atom = m_pdb->atom_list().getFirst();
-	while (atom != NULL) {
-		if (_filterPocket(atom)) {
-			if (atom->res_seq() != res_seq) {
-				if (last != NULL) {
-					m_atoms[i] = *last;
-					m_atoms[i][0] = coord[0] / n;
-					m_atoms[i][1] = coord[1] / n;
-					m_atoms[i][2] = coord[2] / n;
-					i++;
-				}
-				res_seq = atom->res_seq();
-				coord[0] = (*atom)[0];
-				coord[1] = (*atom)[1];
-				coord[2] = (*atom)[2];
-				last = atom;
-				n=1;
-			}
-			else {
-				coord[0] += (*atom)[0];
-				coord[1] += (*atom)[1];
-				coord[2] += (*atom)[2];
-				last = atom;
-				n++;
-			}
-		}
-		atom = m_pdb->atom_list().getNext();
-	}
-	if (last != NULL) {
-		m_atoms[i] = *last;
-		m_atoms[i][0] = coord[0] / n;
-		m_atoms[i][1] = coord[1] / n;
-		m_atoms[i][2] = coord[2] / n;
 	}
 }
 
 void ProteinChain::clearData()
 {
-	m_length = 0;
 	m_name[0] = 0;
 	m_id_code[0] = 0;
 	m_dep_date[0] = 0;
 	m_classification[0] = 0;
-	delete[] m_atoms;
-	m_atoms = NULL;
+	m_atoms.clear();
 }
 
 void ProteinChain::writeChainFile(const char *filename)
@@ -209,9 +170,9 @@ void ProteinChain::writeChainFile(const char *filename)
 		exit(1);
 	}
 
-	fprintf(fp, "%d\n", m_length);
+	fprintf(fp, "%d\n", length());
 
-	for (i=0; i<m_length; i++) {
+	for (i=0; i<length(); i++) {
 		fprintf(fp, "%8.3f %8.3f %8.3f\n", m_atoms[i][0], m_atoms[i][1], m_atoms[i][2]);
 	}
 
@@ -222,7 +183,7 @@ void ProteinChain::writeChainCode(FILE *fp)
 {
 	int i;
 
-	for (i=0; i<m_length; i++) {
+	for (i=0; i<length(); i++) {
 		fprintf(fp, "%c", m_atoms[i].resCode());
 	}
 }
@@ -244,9 +205,9 @@ void ProteinChain::writePDBModel(FILE *fp, int model, bool fullchain, double tra
 
 double **ProteinChain::getMatrix()
 {
-	double **matrix = Matrix<double>::alloc(m_length, 3);
+	double **matrix = Matrix<double>::alloc(length(), 3);
 	int i, j;
-	for (i=0; i<m_length; i++) {
+	for (i=0; i<length(); i++) {
 		for (j=0; j<3; j++) {
 			matrix[i][j] = m_atoms[i][j];
 		}
@@ -256,14 +217,14 @@ double **ProteinChain::getMatrix()
 
 double **ProteinChain::getMatrix(double translation[3], double rotation[3][3])
 {
-	double **matrix = Matrix<double>::alloc(m_length, 3);
+	double **matrix = Matrix<double>::alloc(length(), 3);
 	int i, j, k;
-	for (i=0; i<m_length; i++) {
+	for (i=0; i<length(); i++) {
 		for (j=0; j<3; j++) {
 			matrix[i][j] = translation[j];
 		}
 	}
-	for (i=0; i<m_length; i++) {
+	for (i=0; i<length(); i++) {
 		for (j=0; j<3; j++) {
 			for (k=0; k<3; k++) {
 				matrix[i][j] += rotation[j][k] * m_atoms[i][k];
@@ -280,7 +241,7 @@ double ProteinChain::getRMSD(ProteinChain *chain, double translation[3], double 
 	int i, j, n;
 	rmsd = 0;
 	n = 0;
-	for (i=0; i<m_length; i++) {
+	for (i=0; i<length(); i++) {
 		if (alignment[i] >= 0 && alignment[i] < chain->length()) {
 			for (j=0; j<3; j++) {
 				dist = matrix[i][j] - (*chain)[alignment[i]][j];
@@ -298,17 +259,12 @@ double ProteinChain::getRMSD(ProteinChain *chain, double translation[3], double 
 
 void ProteinChain::_assign(ProteinChain &chain)
 {
-	int i;
 	clearData();
 	strcpy(m_name, chain.m_name);
 	strcpy(m_id_code, chain.m_id_code);
 	strcpy(m_dep_date, chain.m_dep_date);
 	strcpy(m_classification, chain.m_classification);
-	m_length = chain.m_length;
-	m_atoms = new PDBAtom [m_length];
-	for (i=0; i<m_length; i++) {
-		m_atoms[i] = chain.m_atoms[i];
-	}
+	m_atoms = chain.m_atoms;
 	m_range[0] = chain.m_range[0];
 	m_range[1] = chain.m_range[1];
 	m_is_backbone = chain.m_is_backbone;
@@ -325,7 +281,7 @@ void ProteinChain::_writePDBModel(FILE *fp, int model, double translation[3], do
 	else {
 		matrix = getMatrix();
 	}
-	for (i=0; i<m_length; i++) {
+	for (i=0; i<length(); i++) {
 		fprintf(fp, "ATOM  %5d %4s %3s %c%4d    %8.3f%8.3f%8.3f%26c\n",
 			m_atoms[i].serial(),
 			m_atoms[i].name(),
@@ -335,7 +291,7 @@ void ProteinChain::_writePDBModel(FILE *fp, int model, double translation[3], do
 			matrix[i][0],
 			matrix[i][1],
 			matrix[i][2], ' ');
-		if ((i == m_length-1) || (m_atoms[i].chain_id() != m_atoms[i+1].chain_id())) {
+		if ((i == length()-1) || (m_atoms[i].chain_id() != m_atoms[i+1].chain_id())) {
 			fprintf(fp, "TER   %5d      %3s %c%4d%54c\n",
 				m_atoms[i].serial()+1,
 				m_atoms[i].res_name(),
@@ -347,16 +303,16 @@ void ProteinChain::_writePDBModel(FILE *fp, int model, double translation[3], do
 	if (model > 0) fprintf(fp, "ENDMDL%74c\n", ' ');
 }
 
-inline bool ProteinChain::_filterChain(PDBAtom *atom)
+inline bool ProteinChain::_filterChain(const PDBAtom &atom) const
 {
-	return ((atom->isCa() || !m_is_backbone)
-			&& (atom->chain_id() == m_chain_id || m_chain_id == -1)
-			&& (atom->res_seq() >= m_range[0] || m_range[0] <= 0)
-			&& (atom->res_seq() <= m_range[1] || m_range[1] <= 0));
+	return ((atom.isCa() || !m_is_backbone)
+			&& (atom.chain_id() == m_chain_id || m_chain_id == -1)
+			&& (atom.res_seq() >= m_range[0] || m_range[0] <= 0)
+			&& (atom.res_seq() <= m_range[1] || m_range[1] <= 0));
 }
 
-inline bool ProteinChain::_filterPocket(PDBAtom *atom)
+inline bool ProteinChain::_filterPocket(const PDBAtom &atom) const
 {
-	return ((atom->pocket_id() == m_pocket_id || m_pocket_id == -1)
-			&& (atom->chain_id() == m_chain_id || m_chain_id == -1));
+	return ((atom.pocket_id() == m_pocket_id || m_pocket_id == -1)
+			&& (atom.chain_id() == m_chain_id || m_chain_id == -1));
 }

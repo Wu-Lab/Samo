@@ -1,5 +1,6 @@
 
-#include <string.h>
+#include <set>
+#include <string>
 
 #include "PDB.h"
 
@@ -23,17 +24,17 @@ PDBAtom::PDBAtom()
 	m_coord[2] = 0;
 }
 
-bool PDBAtom::isCa()
+bool PDBAtom::isCa() const
 {
 	return (strcmp(m_name, " CA ") == 0);
 }
 
-bool PDBAtom::isIdenticalAtom(PDBAtom &atom)
+bool PDBAtom::isIdenticalAtom(const PDBAtom &atom) const
 {
 	return (strcmp(m_name, atom.m_name) == 0);
 }
 
-bool PDBAtom::isIdenticalResidue(PDBAtom &atom)
+bool PDBAtom::isIdenticalResidue(const PDBAtom &atom) const
 {
 	return (strcmp(m_res_name, atom.m_res_name) == 0);
 }
@@ -67,19 +68,6 @@ const char PDBAtom::_getResidueCode(const char *name)
 	return code;
 }
 
-void PDBAtom::_assign(PDBAtom &atom)
-{
-	m_serial = atom.m_serial;
-	strcpy(m_name, atom.m_name);
-	strcpy(m_res_name, atom.m_res_name);
-	m_chain_id = atom.m_chain_id;
-	m_pocket_id = atom.m_pocket_id;
-	m_res_seq = atom.m_res_seq;
-	m_coord[0] = atom.m_coord[0];
-	m_coord[1] = atom.m_coord[1];
-	m_coord[2] = atom.m_coord[2];
-}
-
 
 ////////////////////////////////
 //
@@ -99,54 +87,39 @@ void PDB::setFilename(const char *filename)
 
 int PDB::getPocketID(int index)
 {
-#define MAX_POCKET_ID 8192
-	bool first[MAX_POCKET_ID];
-	PDBAtom *atom;
-	int i;
-	int pid;
+	set<int> pockets;
+	int i, j, pid;
 
-	for (i=0; i<MAX_POCKET_ID; i++) first[i] = true;
-
-	i = 0;
 	pid = -2;
-	atom = m_atom_list.getFirst();
-	while (atom != NULL) {
-		if (first[atom->pocket_id()]) {
-			i++;
-			first[atom->pocket_id()] = false;
-			if (i >= index) {
-				pid = atom->pocket_id();
+	for (i=0; i<m_atoms.size(); ++i) {
+		j = m_atoms[i].pocket_id();
+		if (!pockets.count(j)) {
+			pockets.insert(j);
+			if (pockets.size() >= index) {
+				pid = j;
 				break;
 			}
 		}
-		atom = m_atom_list.getNext();
 	}
 	return pid;
 }
 
 char PDB::getChainID(int index)
 {
-#define MAX_CHAIN_ID 256
-	bool first[MAX_CHAIN_ID];
-	PDBAtom *atom;
-	int i;
+	set<char> chains;
+	int i, j;
 	char cid;
 
-	for (i=0; i<MAX_CHAIN_ID; i++) first[i] = true;
-
-	i = 0;
 	cid = -2;
-	atom = m_atom_list.getFirst();
-	while (atom != NULL) {
-		if (first[(unsigned) atom->chain_id()]) {
-			i++;
-			first[(unsigned) atom->chain_id()] = false;
-			if (i >= index) {
-				cid = atom->chain_id();
+	for (i=0; i<m_atoms.size(); ++i) {
+		j = m_atoms[i].chain_id();
+		if (!chains.count(j)) {
+			chains.insert(j);
+			if (chains.size() >= index) {
+				cid = j;
 				break;
 			}
 		}
-		atom = m_atom_list.getNext();
 	}
 	return cid;
 }
@@ -271,16 +244,16 @@ void PDB::readFile(const char *filename)
 /////////////////////////////////////////////////////////////////////////////////////
 
 		else if (strncmp(buffer, "ATOM  ", 6) == 0) {
-			PDBAtom *atom = new PDBAtom;
+			PDBAtom atom;
 			sscanf(buffer, "%*6c%5d%*c%4c%*c%3c%*c%c%4d%*c%*3c%8lf%8lf%8lf\n",
-				&atom->m_serial,
-				atom->m_name,
-				atom->m_res_name,
-				&atom->m_chain_id,
-				&atom->m_res_seq,
-				&atom->m_coord[0],
-				&atom->m_coord[1],
-				&atom->m_coord[2]);
+				&atom.m_serial,
+				atom.m_name,
+				atom.m_res_name,
+				&atom.m_chain_id,
+				&atom.m_res_seq,
+				&atom.m_coord[0],
+				&atom.m_coord[1],
+				&atom.m_coord[2]);
 //			Logger::debug("%5d, %4s, %3s, %c, %4d, %8.3f, %8.3f, %8.3f\n",
 //				atom->m_serial,
 //				atom->m_name,
@@ -290,7 +263,7 @@ void PDB::readFile(const char *filename)
 //				atom->m_coord[0],
 //				atom->m_coord[1],
 //				atom->m_coord[2]);
-			m_atom_list.addLast(atom, atom->m_serial);
+			m_atoms.push_back(atom);
 		}	
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -378,17 +351,17 @@ void PDB::readPocket(const char *filename)
 /////////////////////////////////////////////////////////////////////////////////////
 
 		if (strncmp(buffer, "ATOM  ", 6) == 0) {
-			PDBAtom *atom = new PDBAtom;
+			PDBAtom atom;
 			sscanf(buffer, "%*6c%5d%*c%4c%*c%3c%*c%c%4d%*c%*3c%8lf%8lf%8lf%*6lf%*6lf%4d\n",
-				&atom->m_serial,
-				atom->m_name,
-				atom->m_res_name,
-				&atom->m_chain_id,
-				&atom->m_res_seq,
-				&atom->m_coord[0],
-				&atom->m_coord[1],
-				&atom->m_coord[2],
-				&atom->m_pocket_id);
+				&atom.m_serial,
+				atom.m_name,
+				atom.m_res_name,
+				&atom.m_chain_id,
+				&atom.m_res_seq,
+				&atom.m_coord[0],
+				&atom.m_coord[1],
+				&atom.m_coord[2],
+				&atom.m_pocket_id);
 // 			Logger::debug("%5d, %4s, %3s, %c, %4d, %8.3f, %8.3f, %8.3f, %4d\n",
 // 				atom->m_serial,
 // 				atom->m_name,
@@ -399,7 +372,7 @@ void PDB::readPocket(const char *filename)
 // 				atom->m_coord[1],
 // 				atom->m_coord[2],
 // 				atom->m_pocket_id);
-			m_atom_list.addLast(atom, atom->m_serial);
+			m_atoms.push_back(atom);
 		}
 	}
 	fclose(fp);
@@ -414,5 +387,5 @@ void PDB::clearData()
 	for (i=0; i<41; i++) m_classification[i] = 0;
 	m_compound_list.removeAll();
 	m_num_coord = 0;
-	m_atom_list.removeAll();
+	m_atoms.clear();
 }
