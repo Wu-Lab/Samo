@@ -24,16 +24,13 @@ PairAlign::PairAlign(ProteinChain *chain_a, ProteinChain *chain_b)
 		m_rotation[i][i] = 1.0;
 	}
 	m_alignment = NULL;
-	m_local_weight_a = NULL;
 	if (m_chain_a != NULL) {
 		m_length_a = m_chain_a->length();
 		m_alignment = new int [m_length_a];
-		m_local_weight_a = new double [m_length_a];
 	}
 	if (m_chain_b != NULL) {
 		m_length_b = m_chain_b->length();
 	}
-	m_localization = false;
 	m_lambda = 6.0;
 	m_branch_and_bound = false;
 	m_sequential_order = false;
@@ -44,18 +41,12 @@ PairAlign::PairAlign(ProteinChain *chain_a, ProteinChain *chain_b)
 	m_min_fragment_length = 8;
 	m_fragment_threshold0 = 3;
 	m_fragment_threshold1 = 4;
-	m_local_radius_threshold_up = 0.99;
-	m_local_radius_threshold_down = 0.9;
-	m_local_radius_ratio_up = 1.2;
-	m_local_radius_ratio_down = 0.9;
 }
 
 PairAlign::~PairAlign()
 {
 	delete[] m_alignment;
-	delete[] m_local_weight_a;
 	m_alignment = NULL;
-	m_local_weight_a = NULL;
 }
 
 void PairAlign::setChain(int i, ProteinChain *chain)
@@ -65,9 +56,7 @@ void PairAlign::setChain(int i, ProteinChain *chain)
 		if (m_chain_a != NULL && m_length_a != m_chain_a->length()) {
 			m_length_a = m_chain_a->length();
 			delete[] m_alignment;
-			delete[] m_local_weight_a;
 			m_alignment = new int [m_length_a];
-			m_local_weight_a = new double [m_length_a];
 		}
 	}
 	else {
@@ -197,45 +186,42 @@ double PairAlign::alignITER()
 	m_score = HUGE_VAL;
 	start_index = 0;
 	while (getStart(start_index++, alignment)) {
-		_initLocalization();
-//		do {
-			solveLeastSquare(translation, rotation, alignment);
-			Logger::info("\tInitial solution: %f", m_chain_a->getRMSD(m_chain_b, translation, rotation, alignment));
-			if (m_annealing) {
-				lambda = m_annealing_initial;
-				do {
-					score_new = HUGE_VAL;
-					do {
-						score_old = score_new;
-						solveLeastSquare(translation, rotation, alignment);
-						score_new = solveMaxMatch(translation, rotation, alignment, m_lambda+lambda);
-						Logger::debug("\t%f, %f", m_lambda+lambda, score_new);
-						if (!_updateLocalization(alignment) && (score_new > score_old)) {
-							Logger::warning("Not convergent!");
- 							break;
-						}
-					} while (fabs(score_new - score_old) > 0.01);
-					lambda *= m_annealing_rate;
-				} while(lambda > 0.01);
-			}
-			else {
+		solveLeastSquare(translation, rotation, alignment);
+		Logger::info("\tInitial solution: %f", m_chain_a->getRMSD(m_chain_b, translation, rotation, alignment));
+		if (m_annealing) {
+			lambda = m_annealing_initial;
+			do {
 				score_new = HUGE_VAL;
 				do {
 					score_old = score_new;
 					solveLeastSquare(translation, rotation, alignment);
-					score_new = solveMaxMatch(translation, rotation, alignment, m_lambda);
-					Logger::debug("\t%f", score_new);
-					if (!_updateLocalization(alignment) && (score_new > score_old)) {
+					score_new = solveMaxMatch(translation, rotation, alignment, m_lambda+lambda);
+					Logger::debug("\t%f, %f", m_lambda+lambda, score_new);
+					if (score_new > score_old) {
 						Logger::warning("Not convergent!");
- 						break;
+						break;
 					}
 				} while (fabs(score_new - score_old) > 0.01);
-			}
-			score_new = solveMaxMatch(translation, rotation, alignment, m_lambda);
-			align_num = _getAlignNum(alignment);
-			rmsd = m_chain_a->getRMSD(m_chain_b, translation, rotation, alignment);
-			Logger::info("\tScore: %f, Aligned: %d, RMSD: %f", score_new, align_num, rmsd);
-//		} while	(_updateLocalization(alignment));
+				lambda *= m_annealing_rate;
+			} while(lambda > 0.01);
+		}
+		else {
+			score_new = HUGE_VAL;
+			do {
+				score_old = score_new;
+				solveLeastSquare(translation, rotation, alignment);
+				score_new = solveMaxMatch(translation, rotation, alignment, m_lambda);
+				Logger::debug("\t%f", score_new);
+				if (score_new > score_old) {
+					Logger::warning("Not convergent!");
+					break;
+				}
+			} while (fabs(score_new - score_old) > 0.01);
+		}
+		score_new = solveMaxMatch(translation, rotation, alignment, m_lambda);
+		align_num = _getAlignNum(alignment);
+		rmsd = m_chain_a->getRMSD(m_chain_b, translation, rotation, alignment);
+		Logger::info("\tScore: %f, Aligned: %d, RMSD: %f", score_new, align_num, rmsd);
 		Logger::info("===============================================================================");
 		if (score_new < m_score) {
 			m_score = score_new;
@@ -612,7 +598,7 @@ bool PairAlign::solveLeastSquare(double translation[3], double rotation[3][3], i
 	double **matrix_u, **matrix_v, vector_d[4], det;
 	bool success;
 	int min_sv_ind, i, j, k, l;
-	double w;
+// 	double w;
 
 	matrix_u = Matrix<double>::alloc(1, 3, 1, 3);
 	matrix_v = Matrix<double>::alloc(1, 3, 1, 3);
@@ -627,26 +613,26 @@ bool PairAlign::solveLeastSquare(double translation[3], double rotation[3][3], i
 		}
 	}
 
-	if (m_localization) {
-		weight = 0;
-		for (k=0; k<m_length_a; k++) {
-			l = alignment[k];
-			if (l >= 0) {
-				w = m_local_weight_a[k];
-				for (i=0; i<3; i++) {
-					center_a[i] += (*m_chain_a)[k][i] * w;
-					center_b[i] += (*m_chain_b)[l][i] * w;
-				}
-				for (i=0; i<3; i++) {
-					for (j=0; j<3; j++) {
-						matrix_u[i+1][j+1] += (*m_chain_a)[k][i] * (*m_chain_b)[l][j] * w;
-					}
-				}
-				weight += w;
-			}
-		}
-	}
-	else {
+// 	if (m_localization) {
+// 		weight = 0;
+// 		for (k=0; k<m_length_a; k++) {
+// 			l = alignment[k];
+// 			if (l >= 0) {
+// 				w = m_local_weight_a[k];
+// 				for (i=0; i<3; i++) {
+// 					center_a[i] += (*m_chain_a)[k][i] * w;
+// 					center_b[i] += (*m_chain_b)[l][i] * w;
+// 				}
+// 				for (i=0; i<3; i++) {
+// 					for (j=0; j<3; j++) {
+// 						matrix_u[i+1][j+1] += (*m_chain_a)[k][i] * (*m_chain_b)[l][j] * w;
+// 					}
+// 				}
+// 				weight += w;
+// 			}
+// 		}
+// 	}
+// 	else {
 		weight = _getAlignNum(alignment);
 		for (k=0; k<m_length_a; k++) {
 			l = alignment[k];
@@ -662,7 +648,7 @@ bool PairAlign::solveLeastSquare(double translation[3], double rotation[3][3], i
 				}
 			}
 		}
-	}
+// 	}
 
 	for (i=0; i<3; i++) {
 		center_a[i] /= weight;
@@ -821,9 +807,9 @@ double PairAlign::solveMaxMatch(double translation[3], double rotation[3][3], in
 				active_index[i][active_num[i]] = j;
 				active_num[i]++;
 			}
-			if (m_localization) {
-				weight[i][j] *= m_local_weight_a[j];
-			}
+// 			if (m_localization) {
+// 				weight[i][j] *= m_local_weight_a[j];
+// 			}
 		}
 	}
 	
@@ -1210,114 +1196,4 @@ double PairAlign::_getSequenceIdentity(int *alignment)
 	}
 	sequence_identity = (double)s / n;
 	return sequence_identity;
-}
-
-void PairAlign::_getLocalWeights()
-{
-	int i;
-	double w;
-	for (i=0; i<m_length_a; i++) {
-		w = get_distance((*m_chain_a)[i], m_local_center_a);
-		w = exp(-w + m_local_radius);
-		w = w / (1 + w);
-		m_local_weight_a[i] = w;
-	}
-}
-
-bool PairAlign::_updateLocalization(int *alignment)
-{
-	int i, j;
-	double rho_a, n;
-	bool updated;
-
-	updated = false;
-	if (m_localization) {
-		// update centers
-		for (i=0; i<3; i++) {
-			m_local_center_a[i] = 0;
-		}
-		n = 0;
-		for (i=0; i<m_length_a; i++) {
-			if (alignment[i] >= 0) {
-				for (j=0; j<3; j++) {
-					m_local_center_a[j] += (*m_chain_a)[i][j];
-				}
-				n++;
-			}
-		}
-		for (i=0; i<3; i++) {
-			m_local_center_a[i] /= n;
-		}
-
-		// update radius
-		rho_a = 0;
-		for (i=0; i<m_length_a; i++) {
-			if (alignment[i] >= 0) {
-				rho_a += m_local_weight_a[i];
-			}
-		}
-
-		n = 0;
-		for (i=0; i<m_length_a; i++) {
-			n += m_local_weight_a[i];
-		}
-		rho_a /= n;
-
-		Logger::info("%f, %f", rho_a, m_local_radius);
-		if (rho_a >= m_local_radius_threshold_up) {
-			m_local_radius *= m_local_radius_ratio_up;
-			Logger::info("Enlarging...");
-			updated = true;
-		}
-		else if (rho_a <= m_local_radius_threshold_down) {
-			m_local_radius *= m_local_radius_ratio_down;
-			Logger::info("Shrinking...");
-			updated = true;
-		}
-
-		if (m_local_radius < m_local_radius_min) {
-			m_local_radius = m_local_radius_min;
-		}
-		else if (m_local_radius > m_local_radius_max) {
-			m_local_radius = m_local_radius_max;
-		}
-
-		_getLocalWeights();
-	}
-
-	return updated;
-}
-
-void PairAlign::_initLocalization()
-{
-	int i, j;
-	double d;
-
-	if (m_localization) {
-		// set centers
-		for (i=0; i<3; i++) {
-			m_local_center_a[i] = 0;
-		}
-		for (i=0; i<m_length_a; i++) {
-			for (j=0; j<3; j++) {
-				m_local_center_a[j] += (*m_chain_a)[i][j];
-			}
-		}
-		for (i=0; i<3; i++) {
-			m_local_center_a[i] /= m_length_a;
-		}
-
-		m_local_radius = 0;
-		for (i=0; i<m_length_a; i++) {
-			d = get_distance((*m_chain_a)[i], m_local_center_a);
-			if (m_local_radius < d) {
-				m_local_radius = d;
-			}
-		}
-
-		m_local_radius_max = m_local_radius;
-		m_local_radius_min = 3;
-
-		_getLocalWeights();
-	}
 }

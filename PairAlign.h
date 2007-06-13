@@ -25,12 +25,7 @@ class PairAlign {
 	bool m_annealing;
 	double m_annealing_initial, m_annealing_rate;
 
-	bool m_localization;
-	double m_local_center_a[3], m_local_radius;
-	double m_local_radius_max, m_local_radius_min;
-	double m_local_radius_threshold_up, m_local_radius_threshold_down;
-	double m_local_radius_ratio_up, m_local_radius_ratio_down;
-	double *m_local_weight_a;
+	double **m_weight;
 
 public:
 	PairAlign(ProteinChain *chain_a = NULL, ProteinChain *chain_b = NULL);
@@ -42,7 +37,6 @@ public:
 
 	void setChain(int i, ProteinChain *chain);
 
-	void setLocalization(bool enable) { m_localization = enable; }
 	void setLambda(double lambda) { m_lambda = lambda; }
 	void setBranchAndBound(bool enable) { m_branch_and_bound = enable; }
 	void setSequentialOrder(bool enable) { m_sequential_order = enable; }
@@ -80,10 +74,6 @@ private:
 	int _getBreakNum(int *alignment);
 	int _getPermuNum(int *alignment);
 	double _getSequenceIdentity(int *alignment);
-
-	void _getLocalWeights();
-	bool _updateLocalization(int *alignment);
-	void _initLocalization();
 
 	friend class MultiAlign;
 };

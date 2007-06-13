@@ -207,7 +207,6 @@ void Samo::run()
 	else if (m_chain_num == 2) {
 		Logger::beginTimer(1, "Pairwise alignment");
 		PairAlign palign(&m_chains[0], &m_chains[1]);
-		palign.setLocalization(m_args.isDefined("localization"));
 		palign.setBranchAndBound(m_args.isDefined("branch_and_bound"));
 		palign.setLambda(m_args.getOption("lambda")->getValueAsDouble());
 		palign.setSequentialOrder(m_args.isDefined("sequential_order"));
