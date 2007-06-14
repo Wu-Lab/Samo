@@ -1,4 +1,5 @@
 
+#include "Utils.h"
 #include "MultiAlign.h"
 
 
@@ -118,14 +119,14 @@ void MultiAlign::updateConsensus()
 	delete[] alignment_number;
 }
 
-void MultiAlign::writePDBFile(const char *filename)
+void MultiAlign::writePDBFile(const string &filename) const
 {
 	FILE *fp;
 	char buffer[81];
 	int i, n;
 
-	if ((fp = fopen(filename, "w")) == NULL) {
-		Logger::error("Can not open the file: %s\n", filename);
+	if ((fp = fopen(filename.c_str(), "w")) == NULL) {
+		Logger::error("Can not open the file: %s\n", filename.c_str());
 		exit(1);
 	}
 
@@ -158,4 +159,8 @@ void MultiAlign::writePDBFile(const char *filename)
 	fprintf(fp, "END   %74c\n", ' ');
 
 	fclose(fp);
+}
+
+void MultiAlign::writeSolutionFile(const string &filename) const
+{
 }

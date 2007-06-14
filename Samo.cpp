@@ -1,17 +1,87 @@
 
-#include <stdlib.h>
+#include <iostream>
+#include <fstream>
 
 #include "Samo.h"
+#include "Options.h"
 
 
-const char *Samo::m_version = "0.03.000";
-const char *Samo::m_year = "2006";
+const char *Samo::m_version = "0.04.000";
+const char *Samo::m_year = "2007";
 
+
+Samo::Samo(int argc, char *argv[])
+{
+	po::options_description generics("Generic options");
+	generics.add_options()
+		("help,h", "Show help message")
+		("config,c", po::value<string>()->default_value("Samo.cfg"), "Configuration file")
+		;
+
+	po::options_description configs("Configurations");
+	configs.add_options()
+		("nologo", "Suppress logo and copyright information")
+		("debug,d", po::value<int>()->default_value(4), "Set debug level - 1: Error; 2: Warning; 3:Information; 4:Verbose; 5:Debug")
+		("pocket", "Align two protein pockets instead of protein chains")
+		("output-solution", po::value<string>(), "Output alignment result to a solution file")
+		("output-pdb", po::value<string>(), "Output alignment result to a PDB file")
+		;
+
+	po::options_description parameters("Parameters");
+	parameters.add_options()
+		("branch-and-bound,b", "Use branch and bound method instead of iterative method")
+		("lambda,l", po::value<double>()->default_value(6.0), "Parameter to balance two objective, smaller value for smaller RMSD")
+		("sequential-order", "Require alignment with sequential order")
+		("heuristic-start", po::value<int>()->default_value(2), "Set heuristic levels for finding initial solutions")
+		("annealing", "Enable annealing technique")
+		("annealing-initial", po::value<double>()->default_value(60.0), "Initial value for annealing")
+		("annealing-rate", po::value<double>()->default_value(0.4), "Cooling coefficient for annealing")
+		;
+
+	po::options_description utilities("Utility options");
+	utilities.add_options()
+		("extract", "Extract chains data from the PDB files")
+		("evaluate", po::value<string>(), "Evaluate a given alignment")
+		("improve", po::value<string>(), "Improve a given alignment")
+		;
+
+	po::options_description hidden;
+	hidden.add_options()
+		("filename", po::value<vector<string> >(&m_filenames), "input files")
+		;
+
+	m_options.add(generics).add(configs).add(parameters).add(utilities).add(hidden);
+	m_visible_options.add(generics).add(configs).add(parameters).add(utilities);
+
+	po::positional_options_description p;
+	p.add("filename", -1);
+
+	po::options_description cmdline_options, file_options;
+	cmdline_options.add(generics).add(configs).add(parameters).add(utilities).add(hidden);
+	file_options.add(configs).add(parameters).add(utilities);
+
+	po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), m_args);
+
+	copyright();
+	ifstream ifs(m_args["config"].as<string>().c_str());
+	po::store(po::parse_config_file(ifs, file_options), m_args);
+
+	po::notify(m_args);
+
+//	conflicting_options(m_args, "convert", "compare");
+
+	parseOptions();
+	parseFileNames();
+}
+
+Samo::~Samo()
+{
+}
 
 void Samo::copyright()
 {
 	Logger::info("Samo - Protein Structure Alignment tool [Version %s]", m_version);
-	Logger::info("Copyright (C) ZHANGroup@BIOINFOAMSS.ORG 2005-%s. All rights reserved.\n", m_year);
+	Logger::info("Copyright (C) ZHANGroup@APORC.ORG 2005-%s. All rights reserved.\n", m_year);
 }
 
 void Samo::usage()
@@ -29,127 +99,35 @@ void Samo::usage()
 	Logger::info("  <pid>   is the pocket identifier in the Pocket file");
 	Logger::info("  <cid>   is the chain identifier in the Pocket file");
 	Logger::info("");
-	Logger::info(m_args.printDef(buf));
+//	Logger::info(m_args.printDef(buf));
 	Logger::info("Examples:");
 	Logger::info("\tSamo 1dhf:a 8dfr");
 	Logger::info("\tSamo pdb1dhf.ent:a pdb8dfr.ent");
 	Logger::info("\tSamo 1dhf:a:20:120 8dfr:_:50:150");
 }
 
-Samo::Samo(int argc, char *argv[])
+void Samo::printOptions()
 {
-	defineOptions();
-	parseOptions(argc, argv);
-
-	m_chain_num = 0;
-	m_pdbs = NULL;
-	m_chains = NULL;
+	cout << "Used options (user specified):" << endl;
+	print_options(m_args, cout, DisplayOption::specified);
+	cout << "Used options (default):" << endl;
+	print_options(m_args, cout, DisplayOption::defaulted);
+	cout << endl;
 }
 
-Samo::~Samo()
+void Samo::parseOptions()
 {
-	clear();
-}
-
-void Samo::defineOptions()
-{
-	ArgOption *option;
-
-	///////////////////////////////////////////////////////
-	//
-	// method options
-
-	option = m_args.addOption("localization", "L");
-	option->addHelpInfo("SAMO Localization version.");
-
-	option = m_args.addOption("branch_and_bound", "b");
-	option->addHelpInfo("Use branch and bound method instead of iterative method.");
-
-	///////////////////////////////////////////////////////
-	//
-	// parameter options
-
-	option = m_args.addOption("lambda", "l", true, "6.0");
-	option->addHelpInfo("Parameter to balance two objective. Smaller value for smaller RMSD.");
-
-	option = m_args.addOption("sequential_order", "so");
-	option->addHelpInfo("Require alignment with sequential order.");
-
-	///////////////////////////////////////////////////////
-	//
-	// heuristic options
-
-	option = m_args.addOption("heuristic_start", "hs", true, "2");
-	option->addHelpInfo("Set heuristic levels for finding initial solutions.");
-
-	///////////////////////////////////////////////////////
-	//
-	// annealing options
-
-	option = m_args.addOption("annealing_enable", "ae");
-	option->addHelpInfo("Enable annealing technique.");
-
-	option = m_args.addOption("annealing_initial", "ai", true, "60.0");
-	option->addHelpInfo("Initial value for annealing.");
-
-	option = m_args.addOption("annealing_rate", "ar", true, "0.4");
-	option->addHelpInfo("Cooling coefficient for annealing.");
-
-	///////////////////////////////////////////////////////
-	//
-	// special functions
-
-	option = m_args.addOption("extract_only", "x");
-	option->addHelpInfo("Extract chains data from the PDB files.");
-
-	option = m_args.addOption("evaluate", "e", true);
-	option->addHelpInfo("Evaluate a given alignment.");
-
-	option = m_args.addOption("improve", "i", true);
-	option->addHelpInfo("Improve a given alignment.");
-
-	///////////////////////////////////////////////////////
-	//
-	// input options
-
-	option = m_args.addOption("pocket", "p");
-	option->addHelpInfo("Align two protein pockets instead of protein chains.");
-
-	///////////////////////////////////////////////////////
-	//
-	// output options
-
-	option = m_args.addOption("output_solfile", "os", true);
-	option->addHelpInfo("Output alignment result to a solution file.");
-
-	option = m_args.addOption("output_pdbfile", "op", true);
-	option->addHelpInfo("Output alignment result to a PDB file.");
-
-	///////////////////////////////////////////////////////
-	//
-	// help options
-
-	option = m_args.addOption("debug_level", "d", true, "4", 5, "1", "2", "3", "4", "5");
-	option->addHelpInfo("1: Error; 2: Warning; 3:Information; 4:Verbose; 5:Debug.");
-
-	option = m_args.addOption("no_logo", "n");
-	option->addHelpInfo("Suppress copyright message.");
-
-	option = m_args.addOption("help", "h");
-	option->addHelpInfo("Print this message.");
-}
-
-void Samo::parseOptions(int argc, char *argv[])
-{
-	char buf[10000];
-	m_args.parseArguments(argc, argv);
-	if (!m_args.isDefined("no_logo")) copyright();
-	if (m_args.getNonOptionArgNum() < 1 || m_args.isDefined("help")) {
+	Logger::setLogLevel(m_args["debug"].as<int>());
+	if (!m_args.count("nologo")) {
+		copyright();
+	}
+	if (m_args.count("help") || !m_filenames.size()) {
 		usage();
 		exit(0);
 	}
-	Logger::setLogLevel(m_args.getOption("debug_level")->getValueAsInt());
-	Logger::debug(m_args.printVal(buf));
+	if (Logger::isDebug()) {
+		printOptions();
+	}
 }
 
 void Samo::run()
@@ -157,8 +135,7 @@ void Samo::run()
 	int i;
 	char filename[80];
 
-	parseChainInfo();
-	if (m_args.isDefined("extract_only")) {
+	if (m_args.count("extract")) {
 		for (i=0; i<m_chain_num; i++) {
 			strcpy(filename, m_chains[i].name());
 			strcat(filename, ".d");
@@ -166,39 +143,29 @@ void Samo::run()
 			Logger::info("Length of the protein chain %s is %d", m_chains[i].name(), m_chains[i].length());
 		}
 	}
-	else if (m_args.isDefined("evaluate")) {
+	else if (m_args.count("evaluate")) {
 		if (m_chain_num != 2) {
 			Logger::error("2 protein chains are required for evaluation!");
 			exit(1);
 		}
 		PairAlign palign(&m_chains[0], &m_chains[1]);
-		palign.setLambda(m_args.getOption("lambda")->getValueAsDouble());
-		palign.setSequentialOrder(m_args.isDefined("sequential_order"));
-		palign.evaluate(m_args.getOption("evaluate")->getValue());
+		palign.setLambda(m_args["lambda"].as<double>());
+		palign.setSequentialOrder(m_args.count("sequential-order"));
+		palign.evaluate(m_args["evaluate"].as<string>().c_str());
 		palign.postProcess();
-		if (m_args.isDefined("output_solfile")) {
-			palign.writeSolutionFile(m_args.getOption("output_solfile")->getValue());
-		}
-		if (m_args.isDefined("output_pdbfile")) {
-			palign.writePDBFile(m_args.getOption("output_pdbfile")->getValue());
-		}
+		output(palign);
 	}
-	else if (m_args.isDefined("improve")) {
+	else if (m_args.count("improve")) {
 		if (m_chain_num != 2) {
 			Logger::error("2 protein chains are required for improvement!");
 			exit(1);
 		}
 		PairAlign palign(&m_chains[0], &m_chains[1]);
-		palign.setLambda(m_args.getOption("lambda")->getValueAsDouble());
-		palign.setSequentialOrder(m_args.isDefined("sequential_order"));
-		palign.improve(m_args.getOption("improve")->getValue());
+		palign.setLambda(m_args["lambda"].as<double>());
+		palign.setSequentialOrder(m_args.count("sequential-order"));
+		palign.improve(m_args["improve"].as<string>().c_str());
 		palign.postProcess();
-		if (m_args.isDefined("output_solfile")) {
-			palign.writeSolutionFile(m_args.getOption("output_solfile")->getValue());
-		}
-		if (m_args.isDefined("output_pdbfile")) {
-			palign.writePDBFile(m_args.getOption("output_pdbfile")->getValue());
-		}
+		output(palign);
 	}
 	else if (m_chain_num <= 1) {
 		Logger::error("At least 2 protein chains are required for alignment!");
@@ -207,64 +174,49 @@ void Samo::run()
 	else if (m_chain_num == 2) {
 		Logger::beginTimer(1, "Pairwise alignment");
 		PairAlign palign(&m_chains[0], &m_chains[1]);
-		palign.setBranchAndBound(m_args.isDefined("branch_and_bound"));
-		palign.setLambda(m_args.getOption("lambda")->getValueAsDouble());
-		palign.setSequentialOrder(m_args.isDefined("sequential_order"));
-		palign.setHeuristicStart(m_args.getOption("heuristic_start")->getValueAsInt());
-		palign.setAnnealing(m_args.isDefined("annealing_enable"));
-		palign.setAnnealingInitial(m_args.getOption("annealing_initial")->getValueAsDouble());
-		palign.setAnnealingRate(m_args.getOption("annealing_rate")->getValueAsDouble());
+		palign.setBranchAndBound(m_args.count("branch-and-bound"));
+		palign.setLambda(m_args["lambda"].as<double>());
+		palign.setSequentialOrder(m_args.count("sequential-order"));
+		palign.setHeuristicStart(m_args["heuristic-start"].as<int>());
+		palign.setAnnealing(m_args.count("annealing"));
+		palign.setAnnealingInitial(m_args["annealing-initial"].as<double>());
+		palign.setAnnealingRate(m_args["annealing-rate"].as<double>());
 		palign.align();
 		palign.postProcess();
 		Logger::endTimer(1);
-		if (m_args.isDefined("output_solfile")) {
-			palign.writeSolutionFile(m_args.getOption("output_solfile")->getValue());
-		}
-		if (m_args.isDefined("output_pdbfile")) {
-			palign.writePDBFile(m_args.getOption("output_pdbfile")->getValue());
-		}
+		output(palign);
 	}
 	else {
 		Logger::beginTimer(1, "Multiple alignment");
 		MultiAlign malign(m_chain_num);
-//		malign.setBranchAndBound(m_args.isDefined("branch_and_bound"));
-		malign.setLambda(m_args.getOption("lambda")->getValueAsDouble());
-		malign.setSequentialOrder(m_args.isDefined("sequential_order"));
-		malign.setHeuristicStart(m_args.getOption("heuristic_start")->getValueAsInt());
-		malign.setAnnealing(m_args.isDefined("annealing_enable"));
-		malign.setAnnealingInitial(m_args.getOption("annealing_initial")->getValueAsDouble());
-		malign.setAnnealingRate(m_args.getOption("annealing_rate")->getValueAsDouble());
+//		malign.setBranchAndBound(m_args.count("branch-and-bound"));
+		malign.setLambda(m_args["lambda"].as<double>());
+		malign.setSequentialOrder(m_args.count("sequential-order"));
+		malign.setHeuristicStart(m_args["heuristic-start"].as<int>());
+		malign.setAnnealing(m_args.count("annealing"));
+		malign.setAnnealingInitial(m_args["annealing-initial"].as<double>());
+		malign.setAnnealingRate(m_args["annealing-rate"].as<double>());
 		for (i=0; i<m_chain_num; i++) {
 			malign.setChain(i, &m_chains[i]);
 		}
 		malign.align();
 		Logger::endTimer(1);
-		if (m_args.isDefined("output_pdbfile")) {
-			malign.writePDBFile(m_args.getOption("output_pdbfile")->getValue());
-		}
+		output(malign);
 	}
 }
 
-void Samo::clear()
-{
-	delete[] m_pdbs;
-	m_pdbs = NULL;
-	delete[] m_chains;
-	m_chains = NULL;
-}
-
-void Samo::parseChainInfo()
+void Samo::parseFileNames()
 {
 	int i, start, end;
 	char filename[1024], buffer[1024], argument[1024], *token;
 
-	m_chain_num = m_args.getNonOptionArgNum();
-	m_pdbs = new PDB [m_chain_num];
-	m_chains = new ProteinChain [m_chain_num];
+	m_chain_num = m_filenames.size();
+	m_pdbs.resize(m_chain_num);
+	m_chains.resize(m_chain_num);
 
-	if (!m_args.isDefined("pocket")) {
+	if (!m_args.count("pocket")) {
 		for (i=0; i<m_chain_num; i++) {
-			strcpy(argument, m_args.getNonOptionArgument(i));
+			strcpy(argument, m_filenames[i].c_str());
 			m_chains[i].setRawName(argument);
 			token = strtok(argument, ":");
 			strcpy(filename, token);
@@ -300,7 +252,7 @@ void Samo::parseChainInfo()
 	}
 	else {
 		for (i=0; i<m_chain_num; i++) {
-			strcpy(argument, m_args.getNonOptionArgument(i));
+			strcpy(argument, m_filenames[i].c_str());
 			m_chains[i].setRawName(argument);
 			token = strtok(argument, ":");
 			strcpy(filename, token);

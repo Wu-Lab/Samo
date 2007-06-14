@@ -4,6 +4,7 @@
 
 
 #include <vector>
+#include <cstdio>
 
 #include "PDB.h"
 
@@ -25,15 +26,17 @@ public:
 	ProteinChain();
 	~ProteinChain();
 
-	const char *raw_name() { return m_raw_name; }
-	char chain_id() { if (m_chain_id == ' ') return '_'; else return m_chain_id; }
-	int pocket_id() { return m_pocket_id; }
-	int range(int i) { return m_range[i]; }
-	int length() { return m_atoms.size(); }
-	const char *name() { return m_name; }
-	const char *id_code() { return m_id_code; }
-	const char *dep_date() { return m_dep_date; }
-	const char *classification() { return m_classification; }
+	PDBAtom &operator [](int i) { return m_atoms[i]; }
+
+	const char *raw_name() const { return m_raw_name; }
+	char chain_id() const { if (m_chain_id == ' ') return '_'; else return m_chain_id; }
+	int pocket_id() const { return m_pocket_id; }
+	int range(int i) const { return m_range[i]; }
+	int length() const { return m_atoms.size(); }
+	const char *name() const { return m_name; }
+	const char *id_code() const { return m_id_code; }
+	const char *dep_date() const { return m_dep_date; }
+	const char *classification() const { return m_classification; }
 
 	void setPDB(PDB *pdb);
 	void setRawName(const char *rname);
@@ -51,18 +54,14 @@ public:
 
 	void writeChainFile(const char *filename);
 	void writeChainCode(FILE *fp);
-	void writePDBModel(FILE *fp, int model = 0, bool fullchain = false, double translation[3] = NULL, double rotation[3][3] = NULL);
+	void writePDBModel(FILE *fp, int model = 0, bool fullchain = false, const double translation[3] = NULL, const double rotation[3][3] = NULL);
 
 	double **getMatrix();
-	double **getMatrix(double translation[3], double rotation[3][3]);
+	double **getMatrix(const double translation[3], const double rotation[3][3]);
 	double getRMSD(ProteinChain *chain, double translation[3], double rotation[3][3], int *alignment);
 
-	PDBAtom &operator [](int i) { return m_atoms[i]; }
-	void operator =(ProteinChain &chain) { _assign(chain); }
-
 protected:
-	void _assign(ProteinChain &chain);
-	void _writePDBModel(FILE *fp, int model = 0, double translation[3] = NULL, double rotation[3][3] = NULL);
+	void _writePDBModel(FILE *fp, int model = 0, const double translation[3] = NULL, const double rotation[3][3] = NULL);
 	bool _filterChain(const PDBAtom &atom) const;
 	bool _filterPocket(const PDBAtom &atom) const;
 };

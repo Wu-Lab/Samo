@@ -70,7 +70,7 @@ F90=df.exe
 # ADD BASE F90 /check:bounds /compile_only /debug:full /nologo /traceback /warn:argument_checking /warn:nofileopt
 # ADD F90 /check:bounds /compile_only /debug:full /nologo /traceback /warn:argument_checking /warn:nofileopt
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /GZ /c
-# ADD CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /GZ /c
+# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /D "_STLP_DEBUG" /YX /FD /GZ /c
 # ADD BASE RSC /l 0x804 /d "_DEBUG"
 # ADD RSC /l 0x804 /d "_DEBUG"
 BSC32=bscmake.exe
@@ -100,6 +100,10 @@ SOURCE=.\Main.cpp
 # Begin Source File
 
 SOURCE=.\MultiAlign.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\Options.cpp
 # End Source File
 # Begin Source File
 
@@ -135,15 +139,15 @@ SOURCE=.\FibHeap.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\List.h
-# End Source File
-# Begin Source File
-
 SOURCE=.\Matrix.h
 # End Source File
 # Begin Source File
 
 SOURCE=.\MultiAlign.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\Options.h
 # End Source File
 # Begin Source File
 

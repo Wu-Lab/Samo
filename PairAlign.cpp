@@ -1,6 +1,8 @@
 
-#include <math.h>
+#include <map>
+#include <numeric>
 
+#include "Utils.h"
 #include "PairAlign.h"
 #include "SVD.h"
 #include "FibHeap.h"
@@ -245,7 +247,8 @@ double PairAlign::alignITER_dmstart()
 	double **inner_distance_a, **inner_distance_b, **similarity;
 	int **gapless_aligned_fragment;
 
-	List<int, int> candidates;
+	multimap<int, int, greater<int> > candidates;
+	multimap<int, int, greater<int> >::iterator ci;
 	double translation[3], rotation[3][3], lambda, rmsd;
 	int *alignment = new int [m_length_a], align_num;
 	double score_old, score_new;
@@ -316,7 +319,7 @@ double PairAlign::alignITER_dmstart()
 	for (i=0; i<length_a; i++) {
 		for (j=0; j<length_b; j++) {
 			if (gapless_aligned_fragment[i][j] > 0) {
-				candidates.addDescent(new int(i*m+j), gapless_aligned_fragment[i][j]);
+				candidates.insert(make_pair(gapless_aligned_fragment[i][j], i*m+j));
 			}
 		}
 	}
@@ -325,16 +328,13 @@ double PairAlign::alignITER_dmstart()
 
 	m_score = HUGE_VAL;
 
-	candidates.moveFirst();
+	ci = candidates.begin();
 	for (l=0; l<10; l++) {
-		if (candidates.size() <= 0) break;
+		if (ci == candidates.end()) break;
 
-		k = *candidates.getFirst();
+		k = ci->second;
 		i = k / m;
 		j = k % m;
-		k = *candidates.first()->object();
-
-		candidates.removeFirst();
 
 		Logger::info("%d, (%d, %d) %d", k, i, j, gapless_aligned_fragment[i][j]);
 
@@ -1058,13 +1058,13 @@ double PairAlign::solveMaxAlign(double translation[3], double rotation[3][3], in
 	return score;
 }
 
-void PairAlign::writePDBFile(const char *filename)
+void PairAlign::writePDBFile(const string &filename) const
 {
 	FILE *fp;
 	char buffer[80];
 
-	if ((fp = fopen(filename, "w")) == NULL) {
-		Logger::error("Can not open the file: %s\n", filename);
+	if ((fp = fopen(filename.c_str(), "w")) == NULL) {
+		Logger::error("Can not open the file: %s\n", filename.c_str());
 		exit(1);
 	}
 
@@ -1084,13 +1084,13 @@ void PairAlign::writePDBFile(const char *filename)
 	fclose(fp);
 }
 
-void PairAlign::writeSolutionFile(const char *filename)
+void PairAlign::writeSolutionFile(const string &filename) const
 {
 	FILE *fp;
 	int i, j;
 
-	if ((fp = fopen(filename, "w")) == NULL) {
-		Logger::error("Can not open the file: %s\n", filename);
+	if ((fp = fopen(filename.c_str(), "w")) == NULL) {
+		Logger::error("Can not open the file: %s\n", filename.c_str());
 		exit(1);
 	}
 

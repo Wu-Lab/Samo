@@ -66,8 +66,8 @@ public:
 	double solveMaxMatch(double translation[3], double rotation[3][3], int *alignment, double lambda);
 	double solveMaxAlign(double translation[3], double rotation[3][3], int *alignment, double lambda);
 
-	void writePDBFile(const char *filename);
-	void writeSolutionFile(const char *filename);
+	void writePDBFile(const string &filename) const;
+	void writeSolutionFile(const string &filename) const;
 
 private:
 	int _getAlignNum(int *alignment);

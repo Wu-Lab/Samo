@@ -33,7 +33,8 @@ public:
 
 	void updateConsensus();
 
-	void writePDBFile(const char *filename);
+	void writePDBFile(const string &filename) const;
+	void writeSolutionFile(const string &filename) const;
 
 protected:
 	void _modifyConsensus();

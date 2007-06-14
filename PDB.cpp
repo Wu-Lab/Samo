@@ -1,7 +1,9 @@
 
 #include <set>
 #include <string>
+#include <cstdio>
 
+#include "Utils.h"
 #include "PDB.h"
 
 
@@ -184,7 +186,7 @@ void PDB::readFile(const char *filename)
 			char *buf = new char [61];
 			buf[60] = 0;
 			sscanf(buffer, "%*10c%60c\n", buf);
-			m_compound_list.addLast(buf);
+			m_components.push_back(buf);
 		}
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -295,7 +297,7 @@ void PDB::readFile(const char *filename)
 
 	Logger::debug("\tDatabase Code: %s", m_id_code);
 	Logger::debug("\tClassification: %s", m_classification);
-	Logger::debug("\tNumber of Atoms: %d", m_num_coord);
+	Logger::debug("\tNumber of Coordinate Records: %d", m_num_coord);
 }
 
 void PDB::readPocket(const char *filename)
@@ -363,15 +365,15 @@ void PDB::readPocket(const char *filename)
 				&atom.m_coord[2],
 				&atom.m_pocket_id);
 // 			Logger::debug("%5d, %4s, %3s, %c, %4d, %8.3f, %8.3f, %8.3f, %4d\n",
-// 				atom->m_serial,
-// 				atom->m_name,
-// 				atom->m_res_name,
-// 				atom->m_chain_id,
-// 				atom->m_res_seq,
-// 				atom->m_coord[0],
-// 				atom->m_coord[1],
-// 				atom->m_coord[2],
-// 				atom->m_pocket_id);
+// 				atom.m_serial,
+// 				atom.m_name,
+// 				atom.m_res_name,
+// 				atom.m_chain_id,
+// 				atom.m_res_seq,
+// 				atom.m_coord[0],
+// 				atom.m_coord[1],
+// 				atom.m_coord[2],
+// 				atom.m_pocket_id);
 			m_atoms.push_back(atom);
 		}
 	}
@@ -385,7 +387,7 @@ void PDB::clearData()
 	for (i=0; i<5; i++) m_id_code[i] = 0;
 	for (i=0; i<10; i++) m_dep_date[i] = 0;
 	for (i=0; i<41; i++) m_classification[i] = 0;
-	m_compound_list.removeAll();
+	m_components.clear();
 	m_num_coord = 0;
 	m_atoms.clear();
 }

@@ -3,14 +3,24 @@
 #define __UTILS_H
 
 
+#include <ctime>
+#include <vector>
+#include <iosfwd>
+#include <iterator>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <string.h>
-#include <time.h>
+#include <boost/shared_ptr.hpp>
 
-#include "List.h"
 #include "Matrix.h"
+
+
+using namespace std;
+
+
+namespace std {
+	namespace tr1 = ::boost;
+}
 
 
 class Utils {
@@ -29,58 +39,6 @@ public:
 	static unsigned long hash(register const unsigned char *key, register unsigned long len, register unsigned long init = 0);
 	static unsigned long hash_size(int n) { return (unsigned long) 1 << n; }
 	static unsigned long hash_mask(int n) { return hash_size(n)-1; }
-};
-
-
-typedef List<char, unsigned long> _ConstStringList;
-class ConstStringList: public _ConstStringList {
-public:
-	ConstStringList() { m_is_copy = true; }
-	bool contain(const char *str) { return (get(str) != NULL); }
-	const char *get(const char *str) { return _ConstStringList::get(Utils::hash(str)); }
-	int addFirst(const char *str) { return _ConstStringList::addFirst((char *)str, Utils::hash(str)); }
-	int addLast(const char *str) { return _ConstStringList::addLast((char *)str, Utils::hash(str)); }
-	int addNext(const char *str) { return _ConstStringList::addNext((char *)str, Utils::hash(str)); }
-	int addPrev(const char *str) { return _ConstStringList::addPrev((char *)str, Utils::hash(str)); }
-	int addAscent(const char *str) { return _ConstStringList::addAscent((char *)str, Utils::hash(str)); }
-	int addDescent(const char *str) { return _ConstStringList::addDescent((char *)str, Utils::hash(str)); }
-	int remove(const char *str) { return _ConstStringList::remove(Utils::hash(str)); }
-	int release(const char *str) { return _ConstStringList::release(Utils::hash(str)); }
-};
-
-
-class _String {
-	char *m_buffer;
-
-public:
-	_String(char *buf) { m_buffer = buf; }
-	~_String() { delete[] m_buffer; m_buffer = NULL; }
-
-	static char *get(_String *s) { return (s == NULL ? NULL : s->m_buffer); }
-
-	friend class StringList;
-};
-
-typedef List<_String, unsigned long> _StringList;
-class StringList: public _StringList {
-public:
-	bool contain(const char *str) { return (get(str) != NULL); }
-	char *get(const char *str) { return get(Utils::hash(str)); }
-	int addFirst(char *str) { return _StringList::addFirst(new _String(str), Utils::hash(str)); }
-	int addLast(char *str) { return _StringList::addLast(new _String(str), Utils::hash(str)); }
-	int addNext(char *str) { return _StringList::addNext(new _String(str), Utils::hash(str)); }
-	int addPrev(char *str) { return _StringList::addPrev(new _String(str), Utils::hash(str)); }
-	int addAscent(char *str) { return _StringList::addAscent(new _String(str), Utils::hash(str)); }
-	int addDescent(char *str) { return _StringList::addDescent(new _String(str), Utils::hash(str)); }
-	int remove(const char *str) { return _StringList::remove(Utils::hash(str)); }
-	int release(const char *str) { return _StringList::release(Utils::hash(str)); }
-	char *getFirst() { return _String::get(_StringList::getFirst()); }
-	char *getLast() { return _String::get(_StringList::getLast()); }
-	char *getNext() { return _String::get(_StringList::getNext()); }
-	char *getPrev() { return _String::get(_StringList::getPrev()); }
-	char *getCurrent() const { return _String::get(_StringList::getCurrent()); }
-	char *getItem(ListItem<_String, unsigned long> *item) { return _String::get(_StringList::getItem(item)); }
-	char *get(unsigned long key) { return _String::get(_StringList::get(key)); }
 };
 
 
@@ -150,84 +108,19 @@ private:
 };
 
 
-class ArgOption;
-typedef List<ArgOption, unsigned long> ArgOptionList;
-
-
-class ArgOption {
-	char *m_name;
-	char *m_short_name;
-	bool m_require_value;
-	char *m_default_value;
-	ConstStringList m_possible_values;
-	ArgOptionList m_conflict_options;
-	char *m_help_info;
-	bool m_defined;
-	char *m_value;
-
-public:
-	ArgOption(char *name, char *short_name = NULL, bool require_value = false, char *default_value = NULL, int possible_values_num = 0, ...);
-	ArgOption(char *name, char *short_name = NULL, bool require_value = false, char *default_value = NULL, int possible_values_num = 0, va_list argptr = NULL);
-	~ArgOption();
-
-	const char *name() { return m_name; }
-	const char *short_name() { return m_short_name; }
-	bool require_value() { return m_require_value; }
-	const char *default_value() { return m_default_value; }
-	const char *help_info() { return m_help_info; }
-
-	void setValue(char *value = NULL);
-	void addConflictOption(ArgOption *option);
-	void addHelpInfo(char *info);
-
-	char *getValue() const;
-	int getValueAsInt() const;
-	double getValueAsDouble() const;
-
-	bool isDefined() { return m_defined; }
-	bool isConflicted();
-	bool equal(const char *value) const;
-
-	char *printDef(char *buffer);
-	char *printVal(char *buffer);
-
-	friend class ArgParser;
+template<typename T>
+ostream &operator<<(ostream &os, const vector<T> &v)
+{
+    copy(v.begin(), v.end(), ostream_iterator<T>(os, " ")); 
+    return os;
 };
 
 
-class ArgParser {
-	const char *m_program_name;
-	ArgOptionList m_options_with_value;
-	ArgOptionList m_options_without_value;
-	ArgOptionList m_options_shortname;
-	ArgOptionList m_options_default;
-	ArgOptionList m_args_option;
-	ConstStringList m_args_non_option;
-	
-public:
-	ArgParser();
-	~ArgParser();
+// functions for string
 
-	int getOptionArgNum() const { return m_args_option.size(); }
-	int getNonOptionArgNum() const { return m_args_non_option.size(); }
-
-	const char *getNonOptionArgument(int i = 0);
-
-	ArgOption *findOption(char *name);
-	ArgOption *getOption(char *name);
-
-	ArgOption *addOption(char *name, char *short_name = NULL, bool require_value = false, char *default_value = NULL, int possible_values_num = 0, ...);
-	void addHelpInfo(char *name, char *info) { getOption(name)->addHelpInfo(info); }
-	void addConflictOptions(char *name1, char *name2);
-	void checkConflictOptions(ArgOption *option);
-
-	void parseArguments(int argc, char *argv[]);
-
-	bool isDefined(char *name) { return getOption(name)->isDefined(); }
-
-	char *printDef(char *buffer);
-	char *printVal(char *buffer);
-};
+void string_replace(string &str, const string &src, const string &dst);
+string int2str(int num);
+int str2int(const string &str);
 
 
 #endif // __UTILS_H

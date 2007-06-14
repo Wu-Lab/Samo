@@ -12,8 +12,7 @@
 
 
 #include <vector>
-
-#include "Utils.h"
+#include <string>
 
 
 class PDBAtom {
@@ -55,7 +54,7 @@ class PDB {
 	char m_id_code[5];								// This identifier is unique within PDB
 	char m_dep_date[10];							// Deposition date
 	char m_classification[41];						// Classifies the molecule(s)
-	StringList m_compound_list;						// Description of the molecular components
+	vector<string> m_components;					// Description of the molecular components
 	int m_num_coord;								// Number of atomic coordinate records (ATOM+HETATM)
 	vector<PDBAtom> m_atoms;						// List of atoms
 

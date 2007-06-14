@@ -3,6 +3,7 @@
 #include <numeric>
 #include <limits>
 
+#include "Utils.h"
 #include "ProteinChain.h"
 
 
@@ -129,6 +130,7 @@ void ProteinChain::getPocketChain(PDB *pdb, int pid)
 		if (_filterPocket(m_pdb->atoms()[i])) {
 			res_seq = m_pdb->atoms()[i].res_seq();
 			atoms[res_seq] = i;
+			coords[res_seq].resize(4);
 			coords[res_seq][0] += m_pdb->atoms()[i][0];
 			coords[res_seq][1] += m_pdb->atoms()[i][1];
 			coords[res_seq][2] += m_pdb->atoms()[i][2];
@@ -188,7 +190,7 @@ void ProteinChain::writeChainCode(FILE *fp)
 	}
 }
 
-void ProteinChain::writePDBModel(FILE *fp, int model, bool fullchain, double translation[3], double rotation[3][3])
+void ProteinChain::writePDBModel(FILE *fp, int model, bool fullchain, const double translation[3], const double rotation[3][3])
 {
 	ProteinChain *chain;
 	if (m_pocket_id == 0 && fullchain) {
@@ -215,7 +217,7 @@ double **ProteinChain::getMatrix()
 	return matrix;
 }
 
-double **ProteinChain::getMatrix(double translation[3], double rotation[3][3])
+double **ProteinChain::getMatrix(const double translation[3], const double rotation[3][3])
 {
 	double **matrix = Matrix<double>::alloc(length(), 3);
 	int i, j, k;
@@ -257,20 +259,7 @@ double ProteinChain::getRMSD(ProteinChain *chain, double translation[3], double 
 	return rmsd;
 }
 
-void ProteinChain::_assign(ProteinChain &chain)
-{
-	clearData();
-	strcpy(m_name, chain.m_name);
-	strcpy(m_id_code, chain.m_id_code);
-	strcpy(m_dep_date, chain.m_dep_date);
-	strcpy(m_classification, chain.m_classification);
-	m_atoms = chain.m_atoms;
-	m_range[0] = chain.m_range[0];
-	m_range[1] = chain.m_range[1];
-	m_is_backbone = chain.m_is_backbone;
-}
-
-void ProteinChain::_writePDBModel(FILE *fp, int model, double translation[3], double rotation[3][3])
+void ProteinChain::_writePDBModel(FILE *fp, int model, const double translation[3], const double rotation[3][3])
 {
 	double **matrix;
 	int i;
