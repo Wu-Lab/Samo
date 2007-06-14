@@ -3,6 +3,7 @@
 #include <numeric>
 
 #include "Utils.h"
+#include "Matrix.h"
 #include "PairAlign.h"
 #include "SVD.h"
 #include "FibHeap.h"
@@ -292,7 +293,7 @@ double PairAlign::alignITER_dmstart()
 	for (i=0; i<length_a; i++) {
 		for (j=0; j<length_b; j++) {
 			if (gapless_aligned_fragment[i][j] > 0) {
-				m = Utils::min(length_a-1-i, length_b-1-j);
+				m = min(length_a-1-i, length_b-1-j);
 				for (k=1; k<m; k++) {
 					if (similarity[i+k][j+k] < m_fragment_threshold0) {
 						n = m_min_fragment_length - 1 + k;
@@ -448,7 +449,7 @@ bool PairAlign::getStart(int index, int *alignment)
 		alignment[k] = -1;
 	}
 	if (m_heuristic_start > 0) {
-		block_length = (Utils::max(m_length_a, m_length_b) + m_heuristic_start - 1) / m_heuristic_start;
+		block_length = (max(m_length_a, m_length_b) + m_heuristic_start - 1) / m_heuristic_start;
 		block_number_a = (m_length_a + block_length - 1) / block_length;
 		block_number_b = (m_length_b + block_length - 1) / block_length;
 

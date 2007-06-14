@@ -1,5 +1,6 @@
 
 #include "Utils.h"
+#include "Matrix.h"
 #include "MultiAlign.h"
 
 

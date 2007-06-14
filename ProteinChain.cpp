@@ -4,6 +4,7 @@
 #include <limits>
 
 #include "Utils.h"
+#include "Matrix.h"
 #include "ProteinChain.h"
 
 

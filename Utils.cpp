@@ -1,192 +1,8 @@
 
-#include <string>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstdarg>
 
 #include "Utils.h"
-
-
-////////////////////////////////
-//
-// class Utils
-
-
-/* quick sort function */
-
-void Utils::quick_sort_min(int *ind, double *val, int size)
-{
-	int i, j;
-	int t;
-	double d;
-
-	double pivot;
-
-	if (size <= 24) {
-
-		/* insertion sort */
-		for (i=1;i<size;i++) {
-			t = ind[i];
-			d = val[i];
-			for (j=i-1;j>=0;j--) {
-				if (val[j] > d) {
-					ind[j+1] = ind[j];
-					val[j+1] = val[j];
-				}
-				else {
-					break;
-				}
-			}
-			ind[j+1] = t;
-			val[j+1] = d;
-		}
-	}
-	else {
-		pivot = val[rand_int(size - 1)];
-
-		i = -1;
-		j = size;
-		while (true) {
-			do {
-				i++;
-			} while (val[i] < pivot);
-			do {
-				j--;
-			} while (val[j] > pivot);
-			if (i < j) {
-				t = ind[i];
-				d = val[i];
-				ind[i] = ind[j];
-				val[i] = val[j];
-				ind[j] = t;
-				val[j] = d;
-			}
-			else {
-				if (i == 0) {
-					i = 1;
-				}
-				break;
-			}
-		}
-
-		quick_sort_min(ind, val, i);
-		quick_sort_min(ind + i, val + i, size - i);
-	}
-}
-
-void Utils::quick_sort_max(int *ind, double *val, int size)
-{
-	int i, j;
-	int t;
-	double d;
-
-	double pivot;
-
-	if (size <= 24) {
-
-		/* insertion sort */
-		for (i=1;i<size;i++) {
-			t = ind[i];
-			d = val[i];
-			for (j=i-1;j>=0;j--) {
-				if (val[j] < d) {
-					ind[j+1] = ind[j];
-					val[j+1] = val[j];
-				}
-				else {
-					break;
-				}
-			}
-			ind[j+1] = t;
-			val[j+1] = d;
-		}
-	}
-	else {
-		pivot = val[rand_int(size - 1)];
-
-		i = -1;
-		j = size;
-		while (true) {
-			do {
-				i++;
-			} while (val[i] > pivot);
-			do {
-				j--;
-			} while (val[j] < pivot);
-			if (i < j) {
-				t = ind[i];
-				d = val[i];
-				ind[i] = ind[j];
-				val[i] = val[j];
-				ind[j] = t;
-				val[j] = d;
-			}
-			else {
-				if (i == 0) {
-					i = 1;
-				}
-				break;
-			}
-		}
-
-		quick_sort_max(ind, val, i);
-		quick_sort_max(ind + i, val + i, size - i);
-	}
-}
-
-/* hash function */
-
-#define hash_mix(a, b, c) \
-{ \
-	a -= b; a -= c; a ^= (c>>13); \
-    b -= c; b -= a; b ^= (a<<8);  \
-	c -= a; c -= b; c ^= (b>>13); \
-	a -= b; a -= c; a ^= (c>>12); \
-	b -= c; b -= a; b ^= (a<<16); \
-	c -= a; c -= b; c ^= (b>>5);  \
-	a -= b; a -= c; a ^= (c>>3);  \
-	b -= c; b -= a; b ^= (a<<10); \
-	c -= a; c -= b; c ^= (b>>15); \
-}
-
-unsigned long Utils::hash(register const unsigned char *key, register unsigned long len, register unsigned long init)
-{
-	register unsigned long a, b, c, l;
-	/* set up the internal state */
-	l = len;
-	a = b = 0x9e3779b9;  /* the golden ratio; an arbitrary value */
-	c = init;         /* the previous hash value */
-	/* handle most of the key */
-	while (l >= 12)
-	{
-		a += (key[0] + ((unsigned long) key[1]<<8) + ((unsigned long) key[2]<<16) + ((unsigned long) key[3]<<24));
-		b += (key[4] + ((unsigned long) key[5]<<8) + ((unsigned long) key[6]<<16) + ((unsigned long) key[7]<<24));
-		c += (key[8] + ((unsigned long) key[9]<<8) + ((unsigned long) key[10]<<16) + ((unsigned long) key[11]<<24));
-		hash_mix(a, b, c);
-		key += 12;
-		l -= 12;
-	}
-	/* handle the last 11 bytes */
-	c += len;
-	switch(l)	/* all the case statements fall through */
-	{
-		case 11: c += ((unsigned long) key[10]<<24);
-		case 10: c += ((unsigned long) key[9]<<16);
-		case 9 : c += ((unsigned long) key[8]<<8);
-		/* the first byte of c is reserved for the length */
-		case 8 : b += ((unsigned long) key[7]<<24);
-		case 7 : b += ((unsigned long) key[6]<<16);
-		case 6 : b += ((unsigned long) key[5]<<8);
-		case 5 : b += key[4];
-		case 4 : a += ((unsigned long) key[3]<<24);
-		case 3 : a += ((unsigned long) key[2]<<16);
-		case 2 : a += ((unsigned long) key[1]<<8);
-		case 1 : a += key[0];
-		/* case 0: nothing left to add */
-	}
-	hash_mix(a,b,c);
-	return c;
-}
 
 
 ////////////////////////////////
@@ -358,4 +174,46 @@ void Logger::pauseTimer(int i)
 void Logger::resumeTimer(int i)
 {
 	m_timer[i].resume();
+}
+
+
+////////////////////////////////
+//
+// functions for string
+
+void string_replace(string &str, const string &src, const string &dst)
+{
+	string::size_type npos = static_cast<string::size_type>(string::npos);
+	string::size_type pos = 0;
+	string::size_type srclen = src.size();
+	string::size_type dstlen = dst.size();
+	while((pos=str.find(src, pos)) != npos) {
+		str.replace(pos, srclen, dst);
+		pos += dstlen;
+	}
+}
+
+string int2str(int num)
+{
+	if (num == 0) return "0";
+	string str = "";
+	int num_abs = num > 0 ? num : -num;
+	while (num_abs) {
+		str = static_cast<char>(num_abs % 10 + '0') + str;
+		num_abs /= 10;
+	}
+	if (num < 0) str = "-" + str;
+	return str;
+}
+
+int str2int(const string &str)
+{
+	int len = str.size(), num = 0, i = 0;
+    if (str[0] == '-') i = 1;
+	while (i < len) {
+		num = num * 10 + static_cast<int>(str[i] - '0');
+		++i;
+	}
+	if (str[0] == '-') num *= -1;
+	return num;
 }

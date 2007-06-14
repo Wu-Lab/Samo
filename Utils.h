@@ -3,16 +3,12 @@
 #define __UTILS_H
 
 
+#include <new>
 #include <ctime>
 #include <vector>
 #include <iosfwd>
 #include <iterator>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
 #include <boost/shared_ptr.hpp>
-
-#include "Matrix.h"
 
 
 using namespace std;
@@ -21,25 +17,6 @@ using namespace std;
 namespace std {
 	namespace tr1 = ::boost;
 }
-
-
-class Utils {
-public:
-	template <class T> static int rand_int(T max) { return (int) ((double) rand() * max / RAND_MAX); }
-
-	template <class T> static T min (T i, T j) { return ((i < j) ? i : j); }
-	template <class T> static T max (T i, T j) { return ((i > j) ? i : j); }
-
-	template <class T> static void swap(T &i, T &j) { T temp = i; i = j; j = temp; }
-
-	static void quick_sort_min(int *ind, double *val, int size);
-	static void quick_sort_max(int *ind, double *val, int size);
-
-	static unsigned long hash(const char *key) { return hash((const unsigned char *) key, strlen(key)); }
-	static unsigned long hash(register const unsigned char *key, register unsigned long len, register unsigned long init = 0);
-	static unsigned long hash_size(int n) { return (unsigned long) 1 << n; }
-	static unsigned long hash_mask(int n) { return hash_size(n)-1; }
-};
 
 
 class Timer {
@@ -105,6 +82,75 @@ public:
 private:
 	static void _print(int level, FILE *fp, const char *prompt, const char *format, va_list argptr);
 	static void _println(int level, FILE *fp, const char *prompt, const char *format, va_list argptr);
+};
+
+
+// something for using with STL
+
+
+class StandardNewDelete {
+public:
+	// normal new/delete
+	static void *operator new(std::size_t size) throw(std::bad_alloc)
+	{ return ::operator new(size); }
+	static void operator delete(void *pMemory) throw()
+	{ ::operator delete(pMemory); }
+
+	// placement new/delete
+	static void *operator new(std::size_t size, void *ptr) throw()
+	{ return ::operator new(size, ptr); }
+	static void operator delete(void *pMemory, void *ptr) throw()
+	{ ::operator delete(pMemory, ptr); }
+
+	// nothrow new/delete
+	static void *operator new(std::size_t size, const std::nothrow_t &nt) throw()
+	{ return ::operator new(size, nt); }
+	static void operator delete(void *pMemory, const std::nothrow_t &) throw()
+	{ ::operator delete(pMemory); }
+
+	// debug new/delete
+#ifdef _DEBUG
+	static void *operator new(std::size_t size, int, const char *, int) throw(std::bad_alloc)
+	{ return operator new(size); }
+	static void operator delete(void *pMemory, int, const char *, int) throw()
+	{ operator delete(pMemory); }
+#endif // _DEBUG
+};
+
+
+class NoThrowNewDelete : public StandardNewDelete {
+public:
+	using StandardNewDelete::operator new;
+	using StandardNewDelete::operator delete;
+
+	// nothrow new/delete
+	static void *operator new(std::size_t size, const std::nothrow_t &) throw()
+	{ return operator new(size); }
+	static void operator delete(void *pMemory, const std::nothrow_t &) throw()
+	{ operator delete(pMemory); }
+};
+
+
+struct DeletePtr {
+	template<typename T>
+	void operator()(const T* ptr) const { delete ptr; }
+};
+
+
+struct DeleteAll {
+	template<typename T>
+	void operator()(const T& container) {
+		for_each(container.begin(), container.end(), DeletePtr());
+	}
+};
+
+
+struct DeleteAll_Clear {
+	template<typename T>
+	void operator()(T& container) {
+		for_each(container.begin(), container.end(), DeletePtr());
+		container.clear();
+	}
 };
 
 
