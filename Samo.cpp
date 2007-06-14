@@ -31,13 +31,13 @@ Samo::Samo(int argc, char *argv[])
 
 	po::options_description parameters("Parameters");
 	parameters.add_options()
-		("branch-and-bound,b", "Use branch and bound method instead of iterative method")
-		("lambda,l", po::value<double>()->default_value(6.0), "Parameter to balance two objective, smaller value for smaller RMSD")
-		("sequential-order", "Require alignment with sequential order")
-		("heuristic-start", po::value<int>()->default_value(2), "Set heuristic levels for finding initial solutions")
-		("annealing", "Enable annealing technique")
-		("annealing-initial", po::value<double>()->default_value(60.0), "Initial value for annealing")
-		("annealing-rate", po::value<double>()->default_value(0.4), "Cooling coefficient for annealing")
+		("branch-and-bound,b", po::value<bool>(&m_params.branch_and_bound), "Use branch and bound method instead of iterative method")
+		("lambda,l", po::value<double>(&m_params.lambda)->default_value(6.0), "Parameter to balance two objective, smaller value for smaller RMSD")
+		("sequential-order", po::value<bool>(&m_params.sequential_order), "Require alignment with sequential order")
+		("heuristic-start", po::value<int>(&m_params.heuristic_start)->default_value(2), "Set heuristic levels for finding initial solutions")
+		("annealing", po::value<bool>(&m_params.annealing), "Enable annealing technique")
+		("annealing-initial", po::value<double>(&m_params.annealing_initial)->default_value(60.0), "Initial value for annealing")
+		("annealing-rate", po::value<double>(&m_params.annealing_rate)->default_value(0.4), "Cooling coefficient for annealing")
 		;
 
 	po::options_description utilities("Utility options");
@@ -152,8 +152,7 @@ void Samo::run()
 			exit(1);
 		}
 		PairAlign palign(&m_chains[0], &m_chains[1]);
-		palign.setLambda(m_args["lambda"].as<double>());
-		palign.setSequentialOrder(m_args.count("sequential-order"));
+		palign.setParams(m_params);
 		palign.evaluate(m_args["evaluate"].as<string>());
 		palign.postProcess();
 		output(palign);
@@ -164,8 +163,7 @@ void Samo::run()
 			exit(1);
 		}
 		PairAlign palign(&m_chains[0], &m_chains[1]);
-		palign.setLambda(m_args["lambda"].as<double>());
-		palign.setSequentialOrder(m_args.count("sequential-order"));
+		palign.setParams(m_params);
 		palign.improve(m_args["improve"].as<string>());
 		palign.postProcess();
 		output(palign);
@@ -177,13 +175,7 @@ void Samo::run()
 	else if (m_chain_num == 2) {
 		Logger::beginTimer(1, "Pairwise alignment");
 		PairAlign palign(&m_chains[0], &m_chains[1]);
-		palign.setBranchAndBound(m_args.count("branch-and-bound"));
-		palign.setLambda(m_args["lambda"].as<double>());
-		palign.setSequentialOrder(m_args.count("sequential-order"));
-		palign.setHeuristicStart(m_args["heuristic-start"].as<int>());
-		palign.setAnnealing(m_args.count("annealing"));
-		palign.setAnnealingInitial(m_args["annealing-initial"].as<double>());
-		palign.setAnnealingRate(m_args["annealing-rate"].as<double>());
+		palign.setParams(m_params);
 		palign.align();
 		palign.postProcess();
 		Logger::endTimer(1);
@@ -192,13 +184,7 @@ void Samo::run()
 	else {
 		Logger::beginTimer(1, "Multiple alignment");
 		MultiAlign malign(m_chain_num);
-//		malign.setBranchAndBound(m_args.count("branch-and-bound"));
-		malign.setLambda(m_args["lambda"].as<double>());
-		malign.setSequentialOrder(m_args.count("sequential-order"));
-		malign.setHeuristicStart(m_args["heuristic-start"].as<int>());
-		malign.setAnnealing(m_args.count("annealing"));
-		malign.setAnnealingInitial(m_args["annealing-initial"].as<double>());
-		malign.setAnnealingRate(m_args["annealing-rate"].as<double>());
+		malign.setParams(m_params);
 		for (i=0; i<m_chain_num; i++) {
 			malign.setChain(i, &m_chains[i]);
 		}

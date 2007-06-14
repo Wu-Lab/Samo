@@ -62,12 +62,7 @@ void MultiAlign::align()
 	for (i=0; i<m_chain_num; i++) {
 		m_pair_align[i].setChain(0, m_chain[i]);
 		m_pair_align[i].setChain(1, &m_consensus);
-		m_pair_align[i].setLambda(m_lambda);
-		m_pair_align[i].setSequentialOrder(m_sequential_order);
-		m_pair_align[i].setHeuristicStart(m_heuristic_start);
-		m_pair_align[i].setAnnealing(m_annealing);
-		m_pair_align[i].setAnnealingInitial(m_annealing_initial);
-		m_pair_align[i].setAnnealingRate(m_annealing_rate);
+		m_pair_align[i].setParams(m_params);
 		m_pair_align[i].align();
 		m_align_num += m_pair_align[i].align_num();
 		m_rmsd += m_pair_align[i].rmsd();

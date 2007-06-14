@@ -25,6 +25,8 @@ class Samo {
 	vector<PDB> m_pdbs;
 	vector<ProteinChain> m_chains;
 
+	AlignParams m_params;
+
 	static const char *m_version;
 	static const char *m_year;
 

@@ -3,6 +3,7 @@
 #define __PAIRALIGN_H
 
 
+#include "AlignParams.h"
 #include "ProteinChain.h"
 
 
@@ -15,17 +16,12 @@ class PairAlign {
 	int m_align_num, m_break_num, m_permu_num;
 	double m_rmsd, m_score, m_sequence_identity;
 
-	double m_lambda;
-	bool m_branch_and_bound, m_sequential_order;
-	int m_heuristic_start;
+	AlignParams m_params;
 
 	int m_min_fragment_length;
 	double m_fragment_threshold0, m_fragment_threshold1;
 
-	bool m_annealing;
-	double m_annealing_initial, m_annealing_rate;
-
-	double **m_weight;
+	vector<vector<double> > m_weights;
 
 public:
 	PairAlign(ProteinChain *chain_a = NULL, ProteinChain *chain_b = NULL);
@@ -35,15 +31,7 @@ public:
 	int alignment(int i) const { return m_alignment[i]; }
 
 	void setChain(int i, ProteinChain *chain);
-
-	void setLambda(double lambda) { m_lambda = lambda; }
-	void setBranchAndBound(bool enable) { m_branch_and_bound = enable; }
-	void setSequentialOrder(bool enable) { m_sequential_order = enable; }
-	void setHeuristicStart(int start) { m_heuristic_start = start; }
-
-	void setAnnealing(bool enable) { m_annealing = enable; }
-	void setAnnealingInitial(double annealing_initial) { m_annealing_initial = annealing_initial; }
-	void setAnnealingRate(double annealing_rate) { m_annealing_rate = annealing_rate; }
+	void setParams(const AlignParams &params) { m_params = params; }
 
 	double align();
 	double alignBNB();
@@ -55,6 +43,7 @@ public:
 	double postAlignWithSequentialOrder();
 
 	bool getStart(int index, vector<int> &alignment);
+	void initWeights();
 
 	double evaluate(const string &filename);
 	double improve(const string &filename);

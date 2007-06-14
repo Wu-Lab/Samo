@@ -41,13 +41,6 @@ PairAlign::PairAlign(ProteinChain *chain_a, ProteinChain *chain_b)
 	if (m_chain_b != NULL) {
 		m_length_b = m_chain_b->length();
 	}
-	m_lambda = 6.0;
-	m_branch_and_bound = false;
-	m_sequential_order = false;
-	m_annealing = false;
-	m_annealing_initial = 60.0;
-	m_annealing_rate = 0.4;
-	m_heuristic_start = 0;
 	m_min_fragment_length = 8;
 	m_fragment_threshold0 = 3;
 	m_fragment_threshold1 = 4;
@@ -82,7 +75,8 @@ double PairAlign::align()
 		Logger::warning("Attmpt to align empty chain!");
 		return m_rmsd;
 	}
-	if (m_branch_and_bound) {
+	initWeights();
+	if (m_params.branch_and_bound) {
 		alignBNB();
 	}
 	else {
@@ -113,7 +107,7 @@ double PairAlign::alignBNB()
 
 	int index, i;
 
-	lambda2 = m_lambda * m_lambda;
+	lambda2 = m_params.lambda * m_params.lambda;
 
 	alignITER();
 	
@@ -191,21 +185,21 @@ double PairAlign::alignITER()
 	while (getStart(start_index++, alignment)) {
 		solveLeastSquare(translation, rotation, alignment);
 		Logger::info("\tInitial solution: %f", m_chain_a->getRMSD(*m_chain_b, translation, rotation, alignment));
-		if (m_annealing) {
-			lambda = m_annealing_initial;
+		if (m_params.annealing) {
+			lambda = m_params.annealing_initial;
 			do {
 				score_new = HUGE_VAL;
 				do {
 					score_old = score_new;
 					solveLeastSquare(translation, rotation, alignment);
-					score_new = solveMaxMatch(translation, rotation, alignment, m_lambda+lambda);
-					Logger::debug("\t%f, %f", m_lambda+lambda, score_new);
+					score_new = solveMaxMatch(translation, rotation, alignment, m_params.lambda+lambda);
+					Logger::debug("\t%f, %f", m_params.lambda+lambda, score_new);
 					if (score_new > score_old) {
 						Logger::warning("Not convergent!");
 						break;
 					}
 				} while (fabs(score_new - score_old) > 0.01);
-				lambda *= m_annealing_rate;
+				lambda *= m_params.annealing_rate;
 			} while(lambda > 0.01);
 		}
 		else {
@@ -213,7 +207,7 @@ double PairAlign::alignITER()
 			do {
 				score_old = score_new;
 				solveLeastSquare(translation, rotation, alignment);
-				score_new = solveMaxMatch(translation, rotation, alignment, m_lambda);
+				score_new = solveMaxMatch(translation, rotation, alignment, m_params.lambda);
 				Logger::debug("\t%f", score_new);
 				if (score_new > score_old) {
 					Logger::warning("Not convergent!");
@@ -221,7 +215,7 @@ double PairAlign::alignITER()
 				}
 			} while (fabs(score_new - score_old) > 0.01);
 		}
-		score_new = solveMaxMatch(translation, rotation, alignment, m_lambda);
+		score_new = solveMaxMatch(translation, rotation, alignment, m_params.lambda);
 		align_num = _getAlignNum(alignment);
 		rmsd = m_chain_a->getRMSD(*m_chain_b, translation, rotation, alignment);
 		Logger::info("\tScore: %f, Aligned: %d, RMSD: %f", score_new, align_num, rmsd);
@@ -348,21 +342,21 @@ double PairAlign::alignITER_dmstart()
 
 		solveLeastSquare(translation, rotation, alignment);
 		Logger::info("\tInitial solution: %f", m_chain_a->getRMSD(*m_chain_b, translation, rotation, alignment));
-		if (m_annealing) {
-			lambda = m_annealing_initial;
+		if (m_params.annealing) {
+			lambda = m_params.annealing_initial;
 			do {
 				score_new = HUGE_VAL;
 				do {
 					score_old = score_new;
 					solveLeastSquare(translation, rotation, alignment);
-					score_new = solveMaxMatch(translation, rotation, alignment, m_lambda+lambda);
-					Logger::debug("\t%f, %f", m_lambda+lambda, score_new);
+					score_new = solveMaxMatch(translation, rotation, alignment, m_params.lambda+lambda);
+					Logger::debug("\t%f, %f", m_params.lambda+lambda, score_new);
 					if (score_new > score_old) {
 						Logger::warning("Not convergent!");
  						break;
 					}
 				} while (fabs(score_new - score_old) > 0.01);
-				lambda *= m_annealing_rate;
+				lambda *= m_params.annealing_rate;
 			} while(lambda > 0.01);
 		}
 		else {
@@ -370,7 +364,7 @@ double PairAlign::alignITER_dmstart()
 			do {
 				score_old = score_new;
 				solveLeastSquare(translation, rotation, alignment);
-				score_new = solveMaxMatch(translation, rotation, alignment, m_lambda);
+				score_new = solveMaxMatch(translation, rotation, alignment, m_params.lambda);
 				Logger::debug("\t%f", score_new);
 				if (score_new > score_old) {
 					Logger::warning("Not convergent!");
@@ -378,7 +372,7 @@ double PairAlign::alignITER_dmstart()
 				}
 			} while (fabs(score_new - score_old) > 0.01);
 		}
-		score_new = solveMaxMatch(translation, rotation, alignment, m_lambda);
+		score_new = solveMaxMatch(translation, rotation, alignment, m_params.lambda);
 		align_num = _getAlignNum(alignment);
 		rmsd = m_chain_a->getRMSD(*m_chain_b, translation, rotation, alignment);
 		Logger::info("\tScore: %f, Aligned: %d, RMSD: %f", score_new, align_num, rmsd);
@@ -406,7 +400,7 @@ double PairAlign::continueAlign()
 	do {
 		score_old = score_new;
 		solveLeastSquare(m_translation, m_rotation, m_alignment);
-		score_new = solveMaxMatch(m_translation, m_rotation, m_alignment, m_lambda);
+		score_new = solveMaxMatch(m_translation, m_rotation, m_alignment, m_params.lambda);
 	} while (fabs(score_new - score_old) > 0.01);
 	m_align_num = _getAlignNum(m_alignment);
 	m_rmsd = m_chain_a->getRMSD(*m_chain_b, m_translation, m_rotation, m_alignment);
@@ -421,7 +415,7 @@ void PairAlign::postProcess()
 		m_chain_a->raw_name(), m_length_a, m_chain_b->raw_name(), m_length_b,
 		m_align_num, m_rmsd, m_break_num, m_permu_num, _getSequenceIdentity(m_alignment));
 
-	if (m_sequential_order) {
+	if (m_params.sequential_order) {
 		postAlignWithSequentialOrder();
 		Logger::info("PostAlign: %s (size=%d) vs %s (size=%d)\n\tAligned = %d, RMSD = %f\n\tBreak/Permutation = %d/%d, SeqId = %5.3f",
 			m_chain_a->raw_name(), m_length_a, m_chain_b->raw_name(), m_length_b,
@@ -431,7 +425,7 @@ void PairAlign::postProcess()
 
 double PairAlign::postAlignWithSequentialOrder()
 {
-	solveMaxAlign(m_translation, m_rotation, m_alignment, m_lambda);
+	solveMaxAlign(m_translation, m_rotation, m_alignment, m_params.lambda);
 	m_align_num = _getAlignNum(m_alignment);
 	m_rmsd = m_chain_a->getRMSD(*m_chain_b, m_translation, m_rotation, m_alignment);
 	m_break_num = _getBreakNum(m_alignment);
@@ -448,8 +442,8 @@ bool PairAlign::getStart(int index, vector<int> &alignment)
 	for (k=0; k<m_length_a; k++) {
 		alignment[k] = -1;
 	}
-	if (m_heuristic_start > 0) {
-		block_length = (max(m_length_a, m_length_b) + m_heuristic_start - 1) / m_heuristic_start;
+	if (m_params.heuristic_start > 0) {
+		block_length = (max(m_length_a, m_length_b) + m_params.heuristic_start - 1) / m_params.heuristic_start;
 		block_number_a = (m_length_a + block_length - 1) / block_length;
 		block_number_b = (m_length_b + block_length - 1) / block_length;
 
@@ -476,6 +470,25 @@ bool PairAlign::getStart(int index, vector<int> &alignment)
 		}
 	}
 	return false;
+}
+
+void PairAlign::initWeights()
+{
+	int i, j;
+	m_weights.resize(m_length_a);
+	for (i=0; i<m_length_a; ++i) {
+		m_weights[i].resize(m_length_b);
+	}
+
+	// init weights by sequence identity
+	for (i=0; i<m_length_a; ++i) {
+		for (j=0; j<m_length_b; ++j) {
+
+		}
+	}
+
+	// init weights by local alignment
+
 }
 
 double PairAlign::evaluate(const string &filename)
@@ -536,7 +549,7 @@ double PairAlign::evaluate(const string &filename)
 		solveLeastSquare(m_translation, m_rotation, m_alignment);
 	}
 	else if (has_tranlation && has_rotation) {
-		solveMaxMatch(m_translation, m_rotation, m_alignment, m_lambda);
+		solveMaxMatch(m_translation, m_rotation, m_alignment, m_params.lambda);
 	}
 	else if (has_tranlation) {
 		Logger::error("Rotation matrix is missing!");
@@ -563,14 +576,14 @@ double PairAlign::improve(const string &filename)
 	do {
 		score_old = score_new;
 		solveLeastSquare(m_translation, m_rotation, m_alignment);
-		score_new = solveMaxMatch(m_translation, m_rotation, m_alignment, m_lambda);
+		score_new = solveMaxMatch(m_translation, m_rotation, m_alignment, m_params.lambda);
 		Logger::debug("\t%f", score_new);
 		if (score_new > score_old) {
 			Logger::warning("Not convergent!");
 			break;
 		}
 	} while (fabs(score_new - score_old) > 0.01);
-	solveMaxMatch(m_translation, m_rotation, m_alignment, m_lambda);
+	solveMaxMatch(m_translation, m_rotation, m_alignment, m_params.lambda);
 
 	m_align_num = _getAlignNum(m_alignment);
 	m_rmsd = m_chain_a->getRMSD(*m_chain_b, m_translation, m_rotation, m_alignment);
