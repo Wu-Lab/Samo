@@ -28,6 +28,7 @@ public:
 	PDBAtom();
 
 	double &operator [](int i) { return m_coord[i]; }
+	const double &operator [](int i) const { return m_coord[i]; }
 
 	int serial() const { return m_serial; }
 	const char *name() const { return m_name; }

@@ -10,7 +10,7 @@ class PairAlign {
 	ProteinChain *m_chain_a, *m_chain_b;
 	int m_length_a, m_length_b;
 
-	int *m_alignment;
+	vector<int> m_alignment;
 	double m_translation[3], m_rotation[3][3];
 	int m_align_num, m_break_num, m_permu_num;
 	double m_rmsd, m_score, m_sequence_identity;
@@ -29,11 +29,10 @@ class PairAlign {
 
 public:
 	PairAlign(ProteinChain *chain_a = NULL, ProteinChain *chain_b = NULL);
-	~PairAlign();
 
-	double rmsd() { return m_rmsd; }
-	int align_num() { return m_align_num; }
-	int alignment(int i) { return m_alignment[i]; }
+	double rmsd() const { return m_rmsd; }
+	int align_num() const { return m_align_num; }
+	int alignment(int i) const { return m_alignment[i]; }
 
 	void setChain(int i, ProteinChain *chain);
 
@@ -55,25 +54,25 @@ public:
 	void postProcess();
 	double postAlignWithSequentialOrder();
 
-	bool getStart(int index, int *alignment);
+	bool getStart(int index, vector<int> &alignment);
 
-	double evaluate(const char *filename);
-	double improve(const char *filename);
+	double evaluate(const string &filename);
+	double improve(const string &filename);
 
-	void setSolution(double translation[3], double rotation[3][3], int *alignment);
+	void setSolution(const double translation[3], const double rotation[3][3], const vector<int> &alignment);
 
-	bool solveLeastSquare(double translation[3], double rotation[3][3], int *alignment);
-	double solveMaxMatch(double translation[3], double rotation[3][3], int *alignment, double lambda);
-	double solveMaxAlign(double translation[3], double rotation[3][3], int *alignment, double lambda);
+	bool solveLeastSquare(double translation[3], double rotation[3][3], vector<int> &alignment);
+	double solveMaxMatch(double translation[3], double rotation[3][3], vector<int> &alignment, double lambda);
+	double solveMaxAlign(double translation[3], double rotation[3][3], vector<int> &alignment, double lambda);
 
 	void writePDBFile(const string &filename) const;
 	void writeSolutionFile(const string &filename) const;
 
 private:
-	int _getAlignNum(int *alignment);
-	int _getBreakNum(int *alignment);
-	int _getPermuNum(int *alignment);
-	double _getSequenceIdentity(int *alignment);
+	int _getAlignNum(const vector<int> &alignment);
+	int _getBreakNum(const vector<int> &alignment);
+	int _getPermuNum(const vector<int> &alignment);
+	double _getSequenceIdentity(const vector<int> &alignment);
 
 	friend class MultiAlign;
 };

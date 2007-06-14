@@ -26,10 +26,9 @@ PairAlign::PairAlign(ProteinChain *chain_a, ProteinChain *chain_b)
 		}
 		m_rotation[i][i] = 1.0;
 	}
-	m_alignment = NULL;
 	if (m_chain_a != NULL) {
 		m_length_a = m_chain_a->length();
-		m_alignment = new int [m_length_a];
+		m_alignment.resize(m_length_a, -1);
 	}
 	if (m_chain_b != NULL) {
 		m_length_b = m_chain_b->length();
@@ -46,20 +45,13 @@ PairAlign::PairAlign(ProteinChain *chain_a, ProteinChain *chain_b)
 	m_fragment_threshold1 = 4;
 }
 
-PairAlign::~PairAlign()
-{
-	delete[] m_alignment;
-	m_alignment = NULL;
-}
-
 void PairAlign::setChain(int i, ProteinChain *chain)
 {
 	if (i == 0) {
 		m_chain_a = chain;
 		if (m_chain_a != NULL && m_length_a != m_chain_a->length()) {
 			m_length_a = m_chain_a->length();
-			delete[] m_alignment;
-			m_alignment = new int [m_length_a];
+			m_alignment.resize(m_length_a);
 		}
 	}
 	else {
@@ -107,8 +99,9 @@ double PairAlign::align()
 double PairAlign::alignBNB()
 {
 	double translation[3], rotation[3][3], lambda2, rmsd, score;
-	int *alignment = new int [m_length_a], align_num;
-	bool *occupied = new bool [m_length_b];
+	int align_num;
+	vector<int> alignment(m_length_a);
+	vector<int> occupied(m_length_b);
 
 	int index, i;
 
@@ -147,7 +140,7 @@ double PairAlign::alignBNB()
 			// test branch
 			align_num = _getAlignNum(alignment);
 			if (align_num >= 1 && solveLeastSquare(translation, rotation, alignment)) {
-				rmsd = m_chain_a->getRMSD(m_chain_b, translation, rotation, alignment);
+				rmsd = m_chain_a->getRMSD(*m_chain_b, translation, rotation, alignment);
 				score = (rmsd * rmsd - lambda2) * align_num;
 //				Logger::debug("\tAligned: %d, RMSD: %f, Score: %f, Best: %f", align_num, rmsd, score, best_score);
 				if (score < m_score) {
@@ -175,22 +168,21 @@ double PairAlign::alignBNB()
 		}
 	}
 
-	delete[] alignment;
-	delete[] occupied;
 	return m_rmsd;
 }
 
 double PairAlign::alignITER()
 {
 	double translation[3], rotation[3][3], lambda, rmsd;
-	int *alignment = new int [m_length_a], align_num;
+	int align_num;
 	double score_old, score_new;
 	int start_index;
+	vector<int> alignment(m_length_a);
 	m_score = HUGE_VAL;
 	start_index = 0;
 	while (getStart(start_index++, alignment)) {
 		solveLeastSquare(translation, rotation, alignment);
-		Logger::info("\tInitial solution: %f", m_chain_a->getRMSD(m_chain_b, translation, rotation, alignment));
+		Logger::info("\tInitial solution: %f", m_chain_a->getRMSD(*m_chain_b, translation, rotation, alignment));
 		if (m_annealing) {
 			lambda = m_annealing_initial;
 			do {
@@ -223,7 +215,7 @@ double PairAlign::alignITER()
 		}
 		score_new = solveMaxMatch(translation, rotation, alignment, m_lambda);
 		align_num = _getAlignNum(alignment);
-		rmsd = m_chain_a->getRMSD(m_chain_b, translation, rotation, alignment);
+		rmsd = m_chain_a->getRMSD(*m_chain_b, translation, rotation, alignment);
 		Logger::info("\tScore: %f, Aligned: %d, RMSD: %f", score_new, align_num, rmsd);
 		Logger::info("===============================================================================");
 		if (score_new < m_score) {
@@ -234,7 +226,6 @@ double PairAlign::alignITER()
 		}
 	}
 
-	delete[] alignment;
 	return m_rmsd;
 }
 
@@ -251,8 +242,9 @@ double PairAlign::alignITER_dmstart()
 	multimap<int, int, greater<int> > candidates;
 	multimap<int, int, greater<int> >::iterator ci;
 	double translation[3], rotation[3][3], lambda, rmsd;
-	int *alignment = new int [m_length_a], align_num;
+	int align_num;
 	double score_old, score_new;
+	vector<int> alignment(m_length_a);
 
 	length_a = m_length_a - m_min_fragment_length + 1;
 	length_b = m_length_b - m_min_fragment_length + 1;
@@ -347,7 +339,7 @@ double PairAlign::alignITER_dmstart()
 		}
 
 		solveLeastSquare(translation, rotation, alignment);
-		Logger::info("\tInitial solution: %f", m_chain_a->getRMSD(m_chain_b, translation, rotation, alignment));
+		Logger::info("\tInitial solution: %f", m_chain_a->getRMSD(*m_chain_b, translation, rotation, alignment));
 		if (m_annealing) {
 			lambda = m_annealing_initial;
 			do {
@@ -380,7 +372,7 @@ double PairAlign::alignITER_dmstart()
 		}
 		score_new = solveMaxMatch(translation, rotation, alignment, m_lambda);
 		align_num = _getAlignNum(alignment);
-		rmsd = m_chain_a->getRMSD(m_chain_b, translation, rotation, alignment);
+		rmsd = m_chain_a->getRMSD(*m_chain_b, translation, rotation, alignment);
 		Logger::info("\tScore: %f, Aligned: %d, RMSD: %f", score_new, align_num, rmsd);
 		Logger::info("===============================================================================");
 		if (score_new < m_score) {
@@ -409,7 +401,7 @@ double PairAlign::continueAlign()
 		score_new = solveMaxMatch(m_translation, m_rotation, m_alignment, m_lambda);
 	} while (fabs(score_new - score_old) > 0.01);
 	m_align_num = _getAlignNum(m_alignment);
-	m_rmsd = m_chain_a->getRMSD(m_chain_b, m_translation, m_rotation, m_alignment);
+	m_rmsd = m_chain_a->getRMSD(*m_chain_b, m_translation, m_rotation, m_alignment);
 	return m_rmsd;
 }
 
@@ -433,13 +425,13 @@ double PairAlign::postAlignWithSequentialOrder()
 {
 	solveMaxAlign(m_translation, m_rotation, m_alignment, m_lambda);
 	m_align_num = _getAlignNum(m_alignment);
-	m_rmsd = m_chain_a->getRMSD(m_chain_b, m_translation, m_rotation, m_alignment);
+	m_rmsd = m_chain_a->getRMSD(*m_chain_b, m_translation, m_rotation, m_alignment);
 	m_break_num = _getBreakNum(m_alignment);
 	m_permu_num = _getPermuNum(m_alignment);
 	return m_rmsd;
 }
 
-bool PairAlign::getStart(int index, int *alignment)
+bool PairAlign::getStart(int index, vector<int> &alignment)
 {
 	int i, j, k;
 	int block_length, block_number_a, block_number_b;
@@ -478,7 +470,7 @@ bool PairAlign::getStart(int index, int *alignment)
 	return false;
 }
 
-double PairAlign::evaluate(const char *filename)
+double PairAlign::evaluate(const string &filename)
 {
 	FILE *fp;
 	char buffer[100];
@@ -500,8 +492,8 @@ double PairAlign::evaluate(const char *filename)
 		m_rotation[i][i] = 1.0;
 	}
 
-	if ((fp = fopen(filename, "r")) == NULL) {
-		Logger::error("Can not open the file: %s\n", filename);
+	if ((fp = fopen(filename.c_str(), "r")) == NULL) {
+		Logger::error("Can not open the file: %s\n", filename.c_str());
 		exit(1);
 	}
 
@@ -548,13 +540,13 @@ double PairAlign::evaluate(const char *filename)
 	}
 
 	m_align_num = _getAlignNum(m_alignment);
-	m_rmsd = m_chain_a->getRMSD(m_chain_b, m_translation, m_rotation, m_alignment);
+	m_rmsd = m_chain_a->getRMSD(*m_chain_b, m_translation, m_rotation, m_alignment);
 	Logger::debug("\tEvaluated: %d, RMSD: %f", m_align_num, m_rmsd);
 
 	return m_rmsd;
 }
 
-double PairAlign::improve(const char *filename)
+double PairAlign::improve(const string &filename)
 {
 	double score_old, score_new;
 
@@ -573,13 +565,13 @@ double PairAlign::improve(const char *filename)
 	solveMaxMatch(m_translation, m_rotation, m_alignment, m_lambda);
 
 	m_align_num = _getAlignNum(m_alignment);
-	m_rmsd = m_chain_a->getRMSD(m_chain_b, m_translation, m_rotation, m_alignment);
+	m_rmsd = m_chain_a->getRMSD(*m_chain_b, m_translation, m_rotation, m_alignment);
 	Logger::debug("\tImproved: %d, RMSD: %f", m_align_num, m_rmsd);
 
 	return m_rmsd;
 }
 
-void PairAlign::setSolution(double translation[3], double rotation[3][3], int *alignment)
+void PairAlign::setSolution(const double translation[3], const double rotation[3][3], const vector<int> &alignment)
 {
 	int i, j;
 	for (i=0; i<3; i++) {
@@ -593,7 +585,7 @@ void PairAlign::setSolution(double translation[3], double rotation[3][3], int *a
 	}
 }
 
-bool PairAlign::solveLeastSquare(double translation[3], double rotation[3][3], int *alignment)
+bool PairAlign::solveLeastSquare(double translation[3], double rotation[3][3], vector<int> &alignment)
 {
 	double weight, center_a[3], center_b[3], min_sv_val;
 	double **matrix_u, **matrix_v, vector_d[4], det;
@@ -769,7 +761,7 @@ int  HeapNode::operator <(FibHeapNode& RHS)
 }
 
 
-double PairAlign::solveMaxMatch(double translation[3], double rotation[3][3], int *alignment, double lambda)
+double PairAlign::solveMaxMatch(double translation[3], double rotation[3][3], vector<int> &alignment, double lambda)
 {
 	double score, reduced_cost, **weight, label_t, current_value;
 	bool *match_free, *label_free;
@@ -935,7 +927,7 @@ double PairAlign::solveMaxMatch(double translation[3], double rotation[3][3], in
 	return score;
 }
 
-double PairAlign::solveMaxAlign(double translation[3], double rotation[3][3], int *alignment, double lambda)
+double PairAlign::solveMaxAlign(double translation[3], double rotation[3][3], vector<int> &alignment, double lambda)
 {
 	double score, **weight, **score_matrix;
 	int **backtrack_b, **backtrack_a;
@@ -1128,7 +1120,7 @@ void PairAlign::writeSolutionFile(const string &filename) const
 	fclose(fp);
 }
 
-int PairAlign::_getAlignNum(int *alignment)
+int PairAlign::_getAlignNum(const vector<int> &alignment)
 {
 	int align_num, i;
 	align_num = 0;
@@ -1140,7 +1132,7 @@ int PairAlign::_getAlignNum(int *alignment)
 	return align_num;
 }
 
-int PairAlign::_getBreakNum(int *alignment)
+int PairAlign::_getBreakNum(const vector<int> &alignment)
 {
 	int break_num, i;
 	bool in_break;
@@ -1167,7 +1159,7 @@ int PairAlign::_getBreakNum(int *alignment)
 	return break_num;
 }
 
-int PairAlign::_getPermuNum(int *alignment)
+int PairAlign::_getPermuNum(const vector<int> &alignment)
 {
 	int permu_num, i, j;
 	permu_num = 0;
@@ -1183,7 +1175,7 @@ int PairAlign::_getPermuNum(int *alignment)
 	return permu_num;
 }
 
-double PairAlign::_getSequenceIdentity(int *alignment)
+double PairAlign::_getSequenceIdentity(const vector<int> &alignment)
 {
 	int i, s, n;
 	double sequence_identity;

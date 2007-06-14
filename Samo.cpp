@@ -151,7 +151,7 @@ void Samo::run()
 		PairAlign palign(&m_chains[0], &m_chains[1]);
 		palign.setLambda(m_args["lambda"].as<double>());
 		palign.setSequentialOrder(m_args.count("sequential-order"));
-		palign.evaluate(m_args["evaluate"].as<string>().c_str());
+		palign.evaluate(m_args["evaluate"].as<string>());
 		palign.postProcess();
 		output(palign);
 	}
@@ -163,7 +163,7 @@ void Samo::run()
 		PairAlign palign(&m_chains[0], &m_chains[1]);
 		palign.setLambda(m_args["lambda"].as<double>());
 		palign.setSequentialOrder(m_args.count("sequential-order"));
-		palign.improve(m_args["improve"].as<string>().c_str());
+		palign.improve(m_args["improve"].as<string>());
 		palign.postProcess();
 		output(palign);
 	}

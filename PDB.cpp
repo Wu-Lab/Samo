@@ -183,7 +183,7 @@ void PDB::readFile(const char *filename)
 /////////////////////////////////////////////////////////////////////////////////////
 
 		else if (strncmp(buffer, "COMPND", 6) == 0) {
-			char *buf = new char [61];
+			char buf[61];
 			buf[60] = 0;
 			sscanf(buffer, "%*10c%60c\n", buf);
 			m_components.push_back(buf);

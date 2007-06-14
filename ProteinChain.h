@@ -27,6 +27,7 @@ public:
 	~ProteinChain();
 
 	PDBAtom &operator [](int i) { return m_atoms[i]; }
+	const PDBAtom &operator [](int i) const { return m_atoms[i]; }
 
 	const char *raw_name() const { return m_raw_name; }
 	char chain_id() const { if (m_chain_id == ' ') return '_'; else return m_chain_id; }
@@ -58,7 +59,7 @@ public:
 
 	double **getMatrix();
 	double **getMatrix(const double translation[3], const double rotation[3][3]);
-	double getRMSD(ProteinChain *chain, double translation[3], double rotation[3][3], int *alignment);
+	double getRMSD(const ProteinChain &chain, const double translation[3], const double rotation[3][3], const vector<int> &alignment);
 
 protected:
 	void _writePDBModel(FILE *fp, int model = 0, const double translation[3] = NULL, const double rotation[3][3] = NULL);

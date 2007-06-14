@@ -237,7 +237,7 @@ double **ProteinChain::getMatrix(const double translation[3], const double rotat
 	return matrix;
 }
 
-double ProteinChain::getRMSD(ProteinChain *chain, double translation[3], double rotation[3][3], int *alignment)
+double ProteinChain::getRMSD(const ProteinChain &chain, const double translation[3], const double rotation[3][3], const vector<int> &alignment)
 {
 	double **matrix = getMatrix(translation, rotation);
 	double rmsd, dist;
@@ -245,9 +245,9 @@ double ProteinChain::getRMSD(ProteinChain *chain, double translation[3], double 
 	rmsd = 0;
 	n = 0;
 	for (i=0; i<length(); i++) {
-		if (alignment[i] >= 0 && alignment[i] < chain->length()) {
+		if (alignment[i] >= 0 && alignment[i] < chain.length()) {
 			for (j=0; j<3; j++) {
-				dist = matrix[i][j] - (*chain)[alignment[i]][j];
+				dist = matrix[i][j] - chain[alignment[i]][j];
 				rmsd += dist * dist;
 			}
 			n++;
