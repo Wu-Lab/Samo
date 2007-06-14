@@ -5,6 +5,8 @@
 #include "Samo.h"
 #include "Options.h"
 
+#include "MemLeak.h"
+
 
 const char *Samo::m_version = "0.04.000";
 const char *Samo::m_year = "2007";
@@ -22,7 +24,7 @@ Samo::Samo(int argc, char *argv[])
 	configs.add_options()
 		("nologo", "Suppress logo and copyright information")
 		("debug,d", po::value<int>()->default_value(4), "Set debug level - 1: Error; 2: Warning; 3:Information; 4:Verbose; 5:Debug")
-		("pocket", "Align two protein pockets instead of protein chains")
+		("pocket,p", "Align two protein pockets instead of protein chains")
 		("output-solution", po::value<string>(), "Output alignment result to a solution file")
 		("output-pdb", po::value<string>(), "Output alignment result to a PDB file")
 		;
@@ -86,7 +88,6 @@ void Samo::copyright()
 
 void Samo::usage()
 {
-	char buf[10000];
 	Logger::info("Usage 1: Samo [options ...] [{code|file}[:id[:start[:end]]] ...]\n");
 	Logger::info("  <code>  is the 4-character PDB assigned identifier");
 	Logger::info("  <file>  is the PDB filename");
@@ -99,7 +100,9 @@ void Samo::usage()
 	Logger::info("  <pid>   is the pocket identifier in the Pocket file");
 	Logger::info("  <cid>   is the chain identifier in the Pocket file");
 	Logger::info("");
-//	Logger::info(m_args.printDef(buf));
+	if (Logger::log_level() >= Logger::log_level_info()) {
+		cout << m_visible_options << "\n\n";
+	}
 	Logger::info("Examples:");
 	Logger::info("\tSamo 1dhf:a 8dfr");
 	Logger::info("\tSamo pdb1dhf.ent:a pdb8dfr.ent");

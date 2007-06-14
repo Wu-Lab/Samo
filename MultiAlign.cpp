@@ -3,6 +3,12 @@
 #include "Matrix.h"
 #include "MultiAlign.h"
 
+#include "MemLeak.h"
+
+
+////////////////////////////////
+//
+// class MultiAlign
 
 MultiAlign::MultiAlign(int chain_num)
 {

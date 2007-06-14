@@ -8,11 +8,19 @@
 #include "SVD.h"
 #include "FibHeap.h"
 
+#include "MemLeak.h"
+
+
 #define square(d) ((d)*(d))
 #define get_square_distance(x, y) (square((x)[0]-(y)[0])+square((x)[1]-(y)[1])+square((x)[2]-(y)[2]))
 #define get_distance(x, y) sqrt(get_square_distance(x, y))
 #define get_outer_distance(x, y, i, j) get_distance((x)[i], (y)[j])
 #define get_inner_distance(x, i, j) get_distance((x)[i], (x)[j])
+
+
+////////////////////////////////
+//
+// class PairAlign
 
 PairAlign::PairAlign(ProteinChain *chain_a, ProteinChain *chain_b)
 {

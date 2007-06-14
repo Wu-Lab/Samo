@@ -6,6 +6,8 @@
 #include "Utils.h"
 #include "PDB.h"
 
+#include "MemLeak.h"
+
 
 ////////////////////////////////
 //

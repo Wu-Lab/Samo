@@ -7,6 +7,8 @@
 #include "Matrix.h"
 #include "ProteinChain.h"
 
+#include "MemLeak.h"
+
 
 ////////////////////////////////
 //
