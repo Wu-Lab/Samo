@@ -18,7 +18,6 @@ ProteinChain::ProteinChain()
 {
 	int i;
 	m_pdb = NULL;
-	m_raw_name[0] = 0;
 	m_chain_id = 0;
 	m_pocket_id = 0;
 	m_range[0] = m_range[1] = 0;
@@ -32,16 +31,6 @@ ProteinChain::ProteinChain()
 ProteinChain::~ProteinChain()
 {
 	clearData();
-}
-
-void ProteinChain::setPDB(PDB *pdb)
-{
-	m_pdb = pdb;
-}
-
-void ProteinChain::setRawName(const char *rname)
-{
-	strcpy(m_raw_name, rname);
 }
 
 void ProteinChain::setChainID(char cid)

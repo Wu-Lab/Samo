@@ -11,7 +11,7 @@
 
 class ProteinChain {
 	PDB *m_pdb;
-	char m_raw_name[256];
+	string m_raw_name;
 	char m_chain_id;								// Chain identifier
 	int m_pocket_id;
 	int m_range[2];
@@ -29,7 +29,7 @@ public:
 	PDBAtom &operator [](int i) { return m_atoms[i]; }
 	const PDBAtom &operator [](int i) const { return m_atoms[i]; }
 
-	const char *raw_name() const { return m_raw_name; }
+	const string &raw_name() const { return m_raw_name; }
 	char chain_id() const { if (m_chain_id == ' ') return '_'; else return m_chain_id; }
 	int pocket_id() const { return m_pocket_id; }
 	int range(int i) const { return m_range[i]; }
@@ -39,8 +39,8 @@ public:
 	const char *dep_date() const { return m_dep_date; }
 	const char *classification() const { return m_classification; }
 
-	void setPDB(PDB *pdb);
-	void setRawName(const char *rname);
+	void setPDB(PDB *pdb) { m_pdb = pdb; }
+	void setRawName(const string &rname) { m_raw_name = rname; }
 	void setChainID(char cid);
 	void setPocketID(int pid);
 	void setRange(int start, int end);

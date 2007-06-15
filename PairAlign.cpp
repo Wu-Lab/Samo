@@ -412,13 +412,13 @@ void PairAlign::postProcess()
 	m_break_num = _getBreakNum(m_alignment);
 	m_permu_num = _getPermuNum(m_alignment);
 	Logger::info("PairAlign: %s (size=%d) vs %s (size=%d)\n\tAligned = %d, RMSD = %f\n\tBreak/Permutation = %d/%d, SeqId = %5.3f",
-		m_chain_a->raw_name(), m_length_a, m_chain_b->raw_name(), m_length_b,
+		m_chain_a->raw_name().c_str(), m_length_a, m_chain_b->raw_name().c_str(), m_length_b,
 		m_align_num, m_rmsd, m_break_num, m_permu_num, _getSequenceIdentity(m_alignment));
 
 	if (m_params.sequential_order) {
 		postAlignWithSequentialOrder();
 		Logger::info("PostAlign: %s (size=%d) vs %s (size=%d)\n\tAligned = %d, RMSD = %f\n\tBreak/Permutation = %d/%d, SeqId = %5.3f",
-			m_chain_a->raw_name(), m_length_a, m_chain_b->raw_name(), m_length_b,
+			m_chain_a->raw_name().c_str(), m_length_a, m_chain_b->raw_name().c_str(), m_length_b,
 			m_align_num, m_rmsd, m_break_num, m_permu_num, _getSequenceIdentity(m_alignment));
 	}
 }
@@ -1085,9 +1085,9 @@ void PairAlign::writePDBFile(const string &filename) const
 	fprintf(fp, "HEADER    %-40s%30c\n", "PAIRWISE PROTEIN STRUCTURE ALIGNMENT", ' ');
 
 	strcpy(buffer, "ALIGNMENT RESULT OF ");
-	strcat(buffer, m_chain_a->raw_name());
+	strcat(buffer, m_chain_a->raw_name().c_str());
 	strcat(buffer, " AND ");
-	strcat(buffer, m_chain_b->raw_name());
+	strcat(buffer, m_chain_b->raw_name().c_str());
 	fprintf(fp, "TITLE     %-60s%10c\n", buffer, ' ');
 
 	m_chain_a->writePDBModel(fp, 1, true, m_translation, m_rotation);
@@ -1109,7 +1109,7 @@ void PairAlign::writeSolutionFile(const string &filename) const
 	}
 
 	fprintf(fp, "[Abstact]\n");
-	fprintf(fp, "Alignment result of %s AND %s\n\n", m_chain_a->raw_name(), m_chain_b->raw_name());
+	fprintf(fp, "Alignment result of %s AND %s\n\n", m_chain_a->raw_name().c_str(), m_chain_b->raw_name().c_str());
 
 	fprintf(fp, "[Result]\n");
 	fprintf(fp, " %f %d\n\n", m_rmsd, m_align_num);
