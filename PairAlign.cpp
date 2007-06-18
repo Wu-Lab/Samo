@@ -483,7 +483,7 @@ void PairAlign::initWeights()
 	// init weights by sequence identity
 	for (i=0; i<m_length_a; ++i) {
 		for (j=0; j<m_length_b; ++j) {
-
+			m_weights[i][j] = 1.0;
 		}
 	}
 
@@ -612,7 +612,6 @@ bool PairAlign::solveLeastSquare(double translation[3], double rotation[3][3], v
 	double **matrix_u, **matrix_v, vector_d[4], det;
 	bool success;
 	int min_sv_ind, i, j, k, l;
-// 	double w;
 
 	matrix_u = Matrix<double>::alloc(1, 3, 1, 3);
 	matrix_v = Matrix<double>::alloc(1, 3, 1, 3);
@@ -627,42 +626,22 @@ bool PairAlign::solveLeastSquare(double translation[3], double rotation[3][3], v
 		}
 	}
 
-// 	if (m_localization) {
-// 		weight = 0;
-// 		for (k=0; k<m_length_a; k++) {
-// 			l = alignment[k];
-// 			if (l >= 0) {
-// 				w = m_local_weight_a[k];
-// 				for (i=0; i<3; i++) {
-// 					center_a[i] += (*m_chain_a)[k][i] * w;
-// 					center_b[i] += (*m_chain_b)[l][i] * w;
-// 				}
-// 				for (i=0; i<3; i++) {
-// 					for (j=0; j<3; j++) {
-// 						matrix_u[i+1][j+1] += (*m_chain_a)[k][i] * (*m_chain_b)[l][j] * w;
-// 					}
-// 				}
-// 				weight += w;
-// 			}
-// 		}
-// 	}
-// 	else {
-		weight = _getAlignNum(alignment);
-		for (k=0; k<m_length_a; k++) {
-			l = alignment[k];
-			if (l >= 0) {
-				for (i=0; i<3; i++) {
-					center_a[i] += (*m_chain_a)[k][i];
-					center_b[i] += (*m_chain_b)[l][i];
-				}
-				for (i=0; i<3; i++) {
-					for (j=0; j<3; j++) {
-						matrix_u[i+1][j+1] += (*m_chain_a)[k][i] * (*m_chain_b)[l][j];
-					}
+	weight = 0;
+	for (k=0; k<m_length_a; k++) {
+		l = alignment[k];
+		if (l >= 0) {
+			for (i=0; i<3; i++) {
+				center_a[i] += (*m_chain_a)[k][i] * m_weights[k][l];
+				center_b[i] += (*m_chain_b)[l][i] * m_weights[k][l];
+			}
+			for (i=0; i<3; i++) {
+				for (j=0; j<3; j++) {
+					matrix_u[i+1][j+1] += (*m_chain_a)[k][i] * (*m_chain_b)[l][j] * m_weights[k][l];
 				}
 			}
 		}
-// 	}
+		weight += m_weights[k][l];
+	}
 
 	for (i=0; i<3; i++) {
 		center_a[i] /= weight;
@@ -670,26 +649,18 @@ bool PairAlign::solveLeastSquare(double translation[3], double rotation[3][3], v
 	}
 	for (i=0; i<3; i++) {
 		for (j=0; j<3; j++) {
-			matrix_u[i+1][j+1] = matrix_u[i+1][j+1] - center_a[i] * center_b[j] * weight;
+			matrix_u[i+1][j+1] -= center_a[i] * center_b[j] * weight;
 		}
 	}
+
+	det = matrix_u[1][1] * matrix_u[2][2] * matrix_u[3][3];
+	det += matrix_u[1][2] * matrix_u[2][3] * matrix_u[3][1];
+	det += matrix_u[1][3] * matrix_u[2][1] * matrix_u[3][2];
+	det -= matrix_u[1][3] * matrix_u[2][2] * matrix_u[3][1];
+	det -= matrix_u[1][2] * matrix_u[2][1] * matrix_u[3][3];
+	det -= matrix_u[1][1] * matrix_u[2][3] * matrix_u[3][2];
 
 	svdcmp(matrix_u, 3, 3, vector_d, matrix_v);
-
-	for (i=0; i<3; i++) {
-		for (j=0; j<3; j++) {
-			rotation[i][j] = 0;
-			for (k=0; k<3; k++) {
-				rotation[i][j] += matrix_v[i+1][k+1] * matrix_u[j+1][k+1];
-			}
-		}
-	}
-	det = rotation[0][0] * rotation[1][1] * rotation[2][2];
-	det += rotation[0][1] * rotation[1][2] * rotation[2][0];
-	det += rotation[0][2] * rotation[1][0] * rotation[2][1];
-	det -= rotation[0][2] * rotation[1][1] * rotation[2][0];
-	det -= rotation[0][1] * rotation[1][0] * rotation[2][2];
-	det -= rotation[0][0] * rotation[1][2] * rotation[2][1];
 
 	success = true;
 	if (det < 0) {
@@ -708,16 +679,16 @@ bool PairAlign::solveLeastSquare(double translation[3], double rotation[3][3], v
 		for (i=1; i<=3; i++) {
 			matrix_v[i][min_sv_ind] = - matrix_v[i][min_sv_ind];
 		}
-		for (i=0; i<3; i++) {
-			for (j=0; j<3; j++) {
-				rotation[i][j] = 0;
-				for (k=0; k<3; k++) {
-					rotation[i][j] += matrix_v[i+1][k+1] * matrix_u[j+1][k+1];
-				}
+	}
+
+	for (i=0; i<3; i++) {
+		for (j=0; j<3; j++) {
+			rotation[i][j] = 0;
+			for (k=0; k<3; k++) {
+				rotation[i][j] += matrix_v[i+1][k+1] * matrix_u[j+1][k+1];
 			}
 		}
 	}
-	
 	for (i=0; i<3; i++) {
 		translation[i] = center_b[i];
 		for (j=0; j<3; j++) {
@@ -821,9 +792,7 @@ double PairAlign::solveMaxMatch(double translation[3], double rotation[3][3], ve
 				active_index[i][active_num[i]] = j;
 				active_num[i]++;
 			}
-// 			if (m_localization) {
-// 				weight[i][j] *= m_local_weight_a[j];
-// 			}
+			weight[i][j] *= m_weights[j][i];
 		}
 	}
 	

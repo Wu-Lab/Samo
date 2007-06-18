@@ -31,11 +31,11 @@ Samo::Samo(int argc, char *argv[])
 
 	po::options_description parameters("Parameters");
 	parameters.add_options()
-		("branch-and-bound,b", po::value<bool>(&m_params.branch_and_bound), "Use branch and bound method instead of iterative method")
+		("branch-and-bound,b", po::bool_switch(&m_params.branch_and_bound), "Use branch and bound method instead of iterative method")
 		("lambda,l", po::value<double>(&m_params.lambda)->default_value(6.0), "Parameter to balance two objective, smaller value for smaller RMSD")
-		("sequential-order", po::value<bool>(&m_params.sequential_order), "Require alignment with sequential order")
+		("sequential-order", po::bool_switch(&m_params.sequential_order), "Require alignment with sequential order")
 		("heuristic-start", po::value<int>(&m_params.heuristic_start)->default_value(2), "Set heuristic levels for finding initial solutions")
-		("annealing", po::value<bool>(&m_params.annealing), "Enable annealing technique")
+		("annealing", po::bool_switch(&m_params.annealing), "Enable annealing technique")
 		("annealing-initial", po::value<double>(&m_params.annealing_initial)->default_value(60.0), "Initial value for annealing")
 		("annealing-rate", po::value<double>(&m_params.annealing_rate)->default_value(0.4), "Cooling coefficient for annealing")
 		;
