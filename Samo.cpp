@@ -197,7 +197,8 @@ void Samo::run()
 void Samo::parseFileNames()
 {
 	int i, start, end;
-	char filename[1024], buffer[1024], argument[1024], *token;
+	string filename;
+	vector<string> tokens;
 
 	m_chain_num = m_filenames.size();
 	m_pdbs.resize(m_chain_num);
@@ -205,33 +206,23 @@ void Samo::parseFileNames()
 
 	if (!m_args.count("pocket")) {
 		for (i=0; i<m_chain_num; i++) {
-			strcpy(argument, m_filenames[i].c_str());
-			m_chains[i].setRawName(argument);
-			token = strtok(argument, ":");
-			strcpy(filename, token);
-			if (strchr(filename, '.') == NULL) {
-				strcat(filename, ".ent");
-				if (strncmp(filename, "pdb", 3) != 0) {
-					strcpy(buffer, "pdb");
-					strcat(buffer, filename);
-					strcpy(filename, buffer);
+			m_chains[i].setRawName(m_filenames[i]);
+			string_tokenize(tokens, m_filenames[i], ":");
+			filename = tokens[0];
+			if (filename.find('.') == string::npos) {
+				filename += ".ent";
+				if (filename.compare(0, 3, "pdb") != 0) {
+					filename = "pdb" + filename;
 				}
 			}
 			m_pdbs[i].readFile(filename);
 			m_chains[i].setPDB(&m_pdbs[i]);
-			token = strtok(NULL, ":");
-			if (token != NULL) {
-				parseChainID(i, token);
-				token = strtok(NULL, ":");
-				if (token != NULL) {
-					start = atoi(token);
-					token = strtok(NULL, ":");
-					if (token != NULL) {
-						end = atoi(token);
-					}
-					else {
-						end = 0;
-					}
+			if (tokens.size() > 1) {
+				parseChainID(i, tokens[1]);
+				if (tokens.size() > 2) {
+					start = str2int(tokens[2]);
+					if (tokens.size() > 3) end = str2int(tokens[3]);
+					else end = 0;
 					m_chains[i].setRange(start, end);
 				}
 			}
@@ -241,27 +232,20 @@ void Samo::parseFileNames()
 	}
 	else {
 		for (i=0; i<m_chain_num; i++) {
-			strcpy(argument, m_filenames[i].c_str());
-			m_chains[i].setRawName(argument);
-			token = strtok(argument, ":");
-			strcpy(filename, token);
-			if (strchr(filename, '.') == NULL) {
-				strcat(filename, ".poc");
-//				if (strncmp(filename, "pdb", 3) != 0) {
-//					strcpy(buffer, "pdb");
-//					strcat(buffer, filename);
-//					strcpy(filename, buffer);
-//				}
+			m_chains[i].setRawName(m_filenames[i]);
+			string_tokenize(tokens, m_filenames[i], ":");
+			filename = tokens[0];
+			if (filename.find('.') == string::npos) {
+				filename += ".poc";
+// 				if (filename.compare(0, 3, "pdb") != 0) {
+// 					filename = "pdb" + filename;
+// 				}
 			}
 			m_pdbs[i].readPocket(filename);
 			m_chains[i].setPDB(&m_pdbs[i]);
-			token = strtok(NULL, ":");
-			if (token != NULL) {
-				parsePocketID(i, token);
-				token = strtok(NULL, ":");
-				if (token != NULL) {
-					parseChainID(i, token);
-				}
+			if (tokens.size() > 1) {
+				parsePocketID(i, tokens[1]);
+				if (tokens.size() > 2) parseChainID(i, tokens[2]);
 			}
 			m_chains[i].getPocketChain();
 			if (m_chains[i].length() == 0) exit(1);
@@ -269,20 +253,20 @@ void Samo::parseFileNames()
 	}
 }
 
-void Samo::parsePocketID(int i, char *token)
+void Samo::parsePocketID(int i, const string &token)
 {
 	if (token[0] == '#') {
-		m_chains[i].setPocketID(m_pdbs[i].getPocketID(atoi(token+1)));
+		m_chains[i].setPocketID(m_pdbs[i].getPocketID(str2int(token.substr(1))));
 	}
 	else {
-		m_chains[i].setPocketID(atoi(token));
+		m_chains[i].setPocketID(str2int(token));
 	}
 }
 
-void Samo::parseChainID(int i, char *token)
+void Samo::parseChainID(int i, const string &token)
 {
 	if (token[0] == '#') {
-		m_chains[i].setChainID(m_pdbs[i].getChainID(atoi(token+1)));
+		m_chains[i].setChainID(m_pdbs[i].getChainID(str2int(token.substr(1))));
 	}
 	else {
 		m_chains[i].setChainID(token[0]);

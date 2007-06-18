@@ -45,8 +45,8 @@ public:
 	void output(const A &align);
 
 	void parseFileNames();
-	void parseChainID(int i, char *token);
-	void parsePocketID(int i, char *token);
+	void parseChainID(int i, const string &token);
+	void parsePocketID(int i, const string &token);
 };
 
 

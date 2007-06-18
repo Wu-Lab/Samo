@@ -51,7 +51,7 @@ protected:
 
 
 class PDB {
-	char m_filename[256];
+	string m_filename;
 	char m_id_code[5];								// This identifier is unique within PDB
 	char m_dep_date[10];							// Deposition date
 	char m_classification[41];						// Classifies the molecule(s)
@@ -62,21 +62,21 @@ class PDB {
 public:
 	PDB(const char *filename = NULL);
 
-	const char *filename() const { return m_filename; }
+	const char *filename() const { return m_filename.c_str(); }
 	const char *id_code() const { return m_id_code; }
 	const char *dep_date() const { return m_dep_date; }
 	const char *classification() const { return m_classification; }
 	vector<PDBAtom> &atoms() { return m_atoms; }
 
-	void setFilename(const char *filename);
+	void setFilename(const string &filename) { m_filename = filename; }
 
 	int getPocketID(int index);
 	char getChainID(int index);
 
-	void readFile(const char *filename = NULL);				// read data from PDB file
-	void writeFile(const char *filename);					// write data to PDB file
+	void readFile(const string &filename = string());		// read data from PDB file
+	void writeFile(const string &filename);					// write data to PDB file
 
-	void readPocket(const char *filename = NULL);
+	void readPocket(const string &filename = string());
 
 	void clearData();
 };

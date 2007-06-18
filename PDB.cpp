@@ -84,11 +84,6 @@ PDB::PDB(const char *filename)
 	clearData();
 }
 
-void PDB::setFilename(const char *filename)
-{
-	strcpy(m_filename, filename);
-}
-
 int PDB::getPocketID(int index)
 {
 	set<int> pockets;
@@ -128,21 +123,21 @@ char PDB::getChainID(int index)
 	return cid;
 }
 
-void PDB::readFile(const char *filename)
+void PDB::readFile(const string &fn)
 {	
 	FILE *fp;
 	char buffer[100];
 	int i;
 
-	if (filename != NULL) setFilename(filename);
+	if (!fn.empty()) setFilename(fn);
 
-	if ((fp = fopen(m_filename, "r")) == NULL) {
-		Logger::error("Can not open the file: %s\n", m_filename);
+	if ((fp = fopen(filename(), "r")) == NULL) {
+		Logger::error("Can not open the file: %s\n", filename());
 		exit(1);
 	}
 
 	clearData();
-	Logger::debug("Read PDB file: %s", m_filename);
+	Logger::debug("Read PDB file: %s", filename());
 
 	i = 0;
 	while (!feof(fp)) {
@@ -302,21 +297,21 @@ void PDB::readFile(const char *filename)
 	Logger::debug("\tNumber of Coordinate Records: %d", m_num_coord);
 }
 
-void PDB::readPocket(const char *filename)
+void PDB::readPocket(const string &fn)
 {	
 	FILE *fp;
 	char buffer[100];
 	int i;
 
-	if (filename != NULL) setFilename(filename);
+	if (!fn.empty()) setFilename(fn);
 
-	if ((fp = fopen(m_filename, "r")) == NULL) {
-		Logger::error("Can not open the file: %s\n", m_filename);
+	if ((fp = fopen(filename(), "r")) == NULL) {
+		Logger::error("Can not open the file: %s\n", filename());
 		exit(1);
 	}
 
 	clearData();
-	Logger::debug("Read Pocket file: %s", m_filename);
+	Logger::debug("Read Pocket file: %s", filename());
 
 	i = 0;
 	while (!feof(fp)) {

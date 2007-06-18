@@ -29,7 +29,7 @@ public:
 	PDBAtom &operator [](int i) { return m_atoms[i]; }
 	const PDBAtom &operator [](int i) const { return m_atoms[i]; }
 
-	const string &raw_name() const { return m_raw_name; }
+	const char *raw_name() const { return m_raw_name.c_str(); }
 	char chain_id() const { if (m_chain_id == ' ') return '_'; else return m_chain_id; }
 	int pocket_id() const { return m_pocket_id; }
 	int range(int i) const { return m_range[i]; }

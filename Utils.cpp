@@ -193,6 +193,28 @@ void string_replace(string &str, const string &src, const string &dst)
 	}
 }
 
+void string_tokenize(vector<string> &tokens, const string &str, const string &delimiters, bool empty_field)
+{
+	string::size_type begin = 0, end = 0;
+	tokens.clear();
+	while (begin != string::npos) {
+		end = str.find_first_of(delimiters, begin);
+		if (end == string::npos) {
+			tokens.push_back(str.substr(begin));
+			break;
+		}
+		else {
+			tokens.push_back(str.substr(begin, end-begin));
+			if (empty_field) {
+				begin = end + 1;
+			}
+			else {
+				begin = str.find_first_not_of(delimiters, end);
+			}
+		}
+	}
+} 
+
 string int2str(int num)
 {
 	if (num == 0) return "0";

@@ -165,6 +165,7 @@ ostream &operator<<(ostream &os, const vector<T> &v)
 // functions for string
 
 void string_replace(string &str, const string &src, const string &dst);
+void string_tokenize(vector<string> &tokens, const string &str, const string &delimiters, bool empty_field = true);
 string int2str(int num);
 int str2int(const string &str);
 
