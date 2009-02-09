@@ -13,7 +13,8 @@ struct AlignParams {
 	bool annealing;
 	double annealing_initial;
 	double annealing_rate;
-	int flagment_length;
+	string weight_method;
+	int fragment_length;
 };
 
 inline AlignParams::AlignParams()
@@ -25,7 +26,8 @@ inline AlignParams::AlignParams()
 	annealing = false;
 	annealing_initial = 60.0;
 	annealing_rate = 0.4;
-	flagment_length = 5;
+	weight_method = "LS";
+	fragment_length = 8;
 }
 
 

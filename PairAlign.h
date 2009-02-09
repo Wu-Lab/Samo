@@ -18,9 +18,6 @@ class PairAlign {
 
 	AlignParams m_params;
 
-	int m_min_fragment_length;
-	double m_fragment_threshold0, m_fragment_threshold1;
-
 	vector<vector<double> > m_weights;
 
 public:
@@ -36,11 +33,10 @@ public:
 	double align();
 	double alignBNB();
 	double alignITER();
-	double alignITER_dmstart();
 
 	double continueAlign();
 	void postProcess();
-	double postAlignWithSequentialOrder();
+	double postAlign(bool seq_order = false);
 
 	bool getStart(int index, vector<int> &alignment);
 	void initWeights();

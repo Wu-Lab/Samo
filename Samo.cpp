@@ -8,8 +8,8 @@
 #include "MemLeak.h"
 
 
-const char *Samo::m_version = "0.04.000";
-const char *Samo::m_year = "2007";
+const char *Samo::m_version = "0.04.001";
+const char *Samo::m_year = "2009";
 
 
 Samo::Samo(int argc, char *argv[])
@@ -38,6 +38,7 @@ Samo::Samo(int argc, char *argv[])
 		("annealing", po::bool_switch(&m_params.annealing), "Enable annealing technique")
 		("annealing-initial", po::value<double>(&m_params.annealing_initial)->default_value(60.0), "Initial value for annealing")
 		("annealing-rate", po::value<double>(&m_params.annealing_rate)->default_value(0.4), "Cooling coefficient for annealing")
+		("weight-method,w", po::value<string>(&m_params.weight_method)->default_value("LS"), "Set weighted method")
 		;
 
 	po::options_description utilities("Utility options");
@@ -64,7 +65,6 @@ Samo::Samo(int argc, char *argv[])
 
 	po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), m_args);
 
-	copyright();
 	ifstream ifs(m_args["config"].as<string>().c_str());
 	po::store(po::parse_config_file(ifs, file_options), m_args);
 

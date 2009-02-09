@@ -41,9 +41,6 @@ PairAlign::PairAlign(ProteinChain *chain_a, ProteinChain *chain_b)
 	if (m_chain_b != NULL) {
 		m_length_b = m_chain_b->length();
 	}
-	m_min_fragment_length = 8;
-	m_fragment_threshold0 = 3;
-	m_fragment_threshold1 = 4;
 }
 
 void PairAlign::setChain(int i, ProteinChain *chain)
@@ -231,168 +228,6 @@ double PairAlign::alignITER()
 	return m_rmsd;
 }
 
-// using distance matrix to setup initial solutions
-
-double PairAlign::alignITER_dmstart()
-{
-	int i, j, k, l, m, n;
-	double s;
-	int length_a, length_b;
-	double **inner_distance_a, **inner_distance_b, **similarity;
-	int **gapless_aligned_fragment;
-
-	multimap<int, int, greater<int> > candidates;
-	multimap<int, int, greater<int> >::iterator ci;
-	double translation[3], rotation[3][3], lambda, rmsd;
-	int align_num;
-	double score_old, score_new;
-	vector<int> alignment(m_length_a);
-
-	length_a = m_length_a - m_min_fragment_length + 1;
-	length_b = m_length_b - m_min_fragment_length + 1;
-	inner_distance_a = Matrix<double>::alloc(m_length_a, m_length_a);
-	inner_distance_b = Matrix<double>::alloc(m_length_b, m_length_b);
-	similarity = Matrix<double>::alloc(length_a, length_b);
-	gapless_aligned_fragment = Matrix<int>::alloc(length_a, length_b);
-
-	for (i=0; i<m_length_a; i++) {
-		for (j=0; j<=i; j++) {
-			inner_distance_a[i][j] = get_inner_distance(*m_chain_a, i, j);
-			inner_distance_a[j][i] = inner_distance_a[i][j];
-		}
-	}
-	for (i=0; i<m_length_b; i++) {
-		for (j=0; j<=i; j++) {
-			inner_distance_b[i][j] = get_inner_distance(*m_chain_b, i, j);
-			inner_distance_b[j][i] = inner_distance_b[i][j];
-		}
-	}
-	for (i=0; i<length_a; i++) {
-		for (j=0; j<length_b; j++) {
-			s = 0;
-			for (k=0; k<m_min_fragment_length; k++) {
-				for (l=0; l<m_min_fragment_length; l++) {
-					s += fabs(inner_distance_a[i+k][i+l] - inner_distance_b[j+k][j+l]);
-				}
-			}
-			similarity[i][j] = s / (m_min_fragment_length * m_min_fragment_length);
-			if (similarity[i][j] < m_fragment_threshold0) {
-				gapless_aligned_fragment[i][j] = m_min_fragment_length;
-			}
-			else {
-				gapless_aligned_fragment[i][j] = 0;
-			}
-		}
-	}
-	for (i=0; i<length_a; i++) {
-		for (j=0; j<length_b; j++) {
-			if (gapless_aligned_fragment[i][j] > 0) {
-				m = min(length_a-1-i, length_b-1-j);
-				for (k=1; k<m; k++) {
-					if (similarity[i+k][j+k] < m_fragment_threshold0) {
-						n = m_min_fragment_length - 1 + k;
-						s = 0;
-						for (l=0; l<n; l++) {
-							s += fabs(inner_distance_a[i+l][i+n] - inner_distance_b[j+l][j+n]);
-						}
-						if (s/n < m_fragment_threshold1) {
-							gapless_aligned_fragment[i+k][j+k] = 0;
-// 							s = (similarity[i][j] * n * n + s * 2);
-// 							n++;
-// 							similarity[i][j] = s / (n * n);
-							gapless_aligned_fragment[i][j]++;
-							continue;
-						}
-					}
-					break;
-				}
-			}
-		}
-	}
-
-	m = length_a+length_b;
-	for (i=0; i<length_a; i++) {
-		for (j=0; j<length_b; j++) {
-			if (gapless_aligned_fragment[i][j] > 0) {
-				candidates.insert(make_pair(gapless_aligned_fragment[i][j], i*m+j));
-			}
-		}
-	}
-
-	Logger::info("candidates = %d", candidates.size());
-
-	m_score = HUGE_VAL;
-
-	ci = candidates.begin();
-	for (l=0; l<10; l++) {
-		if (ci == candidates.end()) break;
-
-		k = ci->second;
-		i = k / m;
-		j = k % m;
-
-		Logger::info("%d, (%d, %d) %d", k, i, j, gapless_aligned_fragment[i][j]);
-
-		for (k=0; k<m_length_a; k++) {
-			alignment[k] = -1;
-		}
-		for (k=0; k<gapless_aligned_fragment[i][j]; k++) {
-			alignment[i+k] = j+k;
-		}
-
-		solveLeastSquare(translation, rotation, alignment);
-		Logger::info("\tInitial solution: %f", m_chain_a->getRMSD(*m_chain_b, translation, rotation, alignment));
-		if (m_params.annealing) {
-			lambda = m_params.annealing_initial;
-			do {
-				score_new = HUGE_VAL;
-				do {
-					score_old = score_new;
-					solveLeastSquare(translation, rotation, alignment);
-					score_new = solveMaxMatch(translation, rotation, alignment, m_params.lambda+lambda);
-					Logger::debug("\t%f, %f", m_params.lambda+lambda, score_new);
-					if (score_new > score_old) {
-						Logger::warning("Not convergent!");
- 						break;
-					}
-				} while (fabs(score_new - score_old) > 0.01);
-				lambda *= m_params.annealing_rate;
-			} while(lambda > 0.01);
-		}
-		else {
-			score_new = HUGE_VAL;
-			do {
-				score_old = score_new;
-				solveLeastSquare(translation, rotation, alignment);
-				score_new = solveMaxMatch(translation, rotation, alignment, m_params.lambda);
-				Logger::debug("\t%f", score_new);
-				if (score_new > score_old) {
-					Logger::warning("Not convergent!");
- 					break;
-				}
-			} while (fabs(score_new - score_old) > 0.01);
-		}
-		score_new = solveMaxMatch(translation, rotation, alignment, m_params.lambda);
-		align_num = _getAlignNum(alignment);
-		rmsd = m_chain_a->getRMSD(*m_chain_b, translation, rotation, alignment);
-		Logger::info("\tScore: %f, Aligned: %d, RMSD: %f", score_new, align_num, rmsd);
-		Logger::info("===============================================================================");
-		if (score_new < m_score) {
-			m_score = score_new;
-			m_align_num = align_num;
-			m_rmsd = rmsd;
-			setSolution(translation, rotation, alignment);
-		}
-
-	}
-
-	Matrix<int>::free(gapless_aligned_fragment);
-	Matrix<double>::free(similarity);
-	Matrix<double>::free(inner_distance_a);
-	Matrix<double>::free(inner_distance_b);
-	return m_rmsd;
-}
-
 double PairAlign::continueAlign()
 {
 	double score_old, score_new;
@@ -409,6 +244,7 @@ double PairAlign::continueAlign()
 
 void PairAlign::postProcess()
 {
+	postAlign();
 	m_break_num = _getBreakNum(m_alignment);
 	m_permu_num = _getPermuNum(m_alignment);
 	Logger::info("PairAlign: %s (size=%d) vs %s (size=%d)\n\tAligned = %d, RMSD = %f\n\tBreak/Permutation = %d/%d, SeqId = %5.3f",
@@ -416,16 +252,27 @@ void PairAlign::postProcess()
 		m_align_num, m_rmsd, m_break_num, m_permu_num, _getSequenceIdentity(m_alignment));
 
 	if (m_params.sequential_order) {
-		postAlignWithSequentialOrder();
+		postAlign(true);
 		Logger::info("PostAlign: %s (size=%d) vs %s (size=%d)\n\tAligned = %d, RMSD = %f\n\tBreak/Permutation = %d/%d, SeqId = %5.3f",
 			m_chain_a->raw_name(), m_length_a, m_chain_b->raw_name(), m_length_b,
 			m_align_num, m_rmsd, m_break_num, m_permu_num, _getSequenceIdentity(m_alignment));
 	}
 }
 
-double PairAlign::postAlignWithSequentialOrder()
+double PairAlign::postAlign(bool seq_order)
 {
-	solveMaxAlign(m_translation, m_rotation, m_alignment, m_params.lambda);
+	int i, j;
+	for (i=0; i<m_length_a; ++i) {
+		for (j=0; j<m_length_b; ++j) {
+			m_weights[i][j] = 1.0;
+		}
+	}
+	if (seq_order) {
+		solveMaxAlign(m_translation, m_rotation, m_alignment, m_params.lambda);
+	}
+	else {
+		solveMaxMatch(m_translation, m_rotation, m_alignment, m_params.lambda);
+	}
 	m_align_num = _getAlignNum(m_alignment);
 	m_rmsd = m_chain_a->getRMSD(*m_chain_b, m_translation, m_rotation, m_alignment);
 	m_break_num = _getBreakNum(m_alignment);
@@ -474,21 +321,86 @@ bool PairAlign::getStart(int index, vector<int> &alignment)
 
 void PairAlign::initWeights()
 {
-	int i, j;
+	int i, j, k, l;
+	int num_a, num_b;
+	double s, max_s;
+	vector<vector<double> > inner_distance_a, inner_distance_b, similarity;
+
 	m_weights.resize(m_length_a);
 	for (i=0; i<m_length_a; ++i) {
 		m_weights[i].resize(m_length_b);
 	}
 
-	// init weights by sequence identity
 	for (i=0; i<m_length_a; ++i) {
 		for (j=0; j<m_length_b; ++j) {
-			m_weights[i][j] = 1.0;
+			m_weights[i][j] = 0.0;
 		}
 	}
 
-	// init weights by local alignment
+	// init weights by local structure
 
+	// using distance matrix to setup initial solutions
+
+	if (m_params.weight_method == "LS") {
+		num_a = m_length_a - m_params.fragment_length + 1;
+		num_b = m_length_b - m_params.fragment_length + 1;
+		inner_distance_a.resize(m_length_a);
+		for (i=0; i<m_length_a; ++i) {
+			inner_distance_a[i].resize(m_length_a);
+		}
+		inner_distance_b.resize(m_length_b);
+		for (i=0; i<m_length_b; ++i) {
+			inner_distance_b[i].resize(m_length_b);
+		}
+		similarity.resize(num_a);
+		for (i=0; i<num_a; ++i) {
+			similarity[i].resize(num_b);
+		}
+
+		for (i=0; i<m_length_a; ++i) {
+			for (j=0; j<=i; ++j) {
+				inner_distance_a[i][j] = get_inner_distance(*m_chain_a, i, j);
+				inner_distance_a[j][i] = inner_distance_a[i][j];
+			}
+		}
+		for (i=0; i<m_length_b; ++i) {
+			for (j=0; j<=i; ++j) {
+				inner_distance_b[i][j] = get_inner_distance(*m_chain_b, i, j);
+				inner_distance_b[j][i] = inner_distance_b[i][j];
+			}
+		}
+		max_s = 0;
+		for (i=0; i<num_a; ++i) {
+			for (j=0; j<num_b; ++j) {
+				s = 0;
+				for (k=0; k<m_params.fragment_length; k++) {
+					for (l=0; l<m_params.fragment_length; l++) {
+						s += fabs(inner_distance_a[i+k][i+l] - inner_distance_b[j+k][j+l]);
+					}
+				}
+				similarity[i][j] = s / (m_params.fragment_length * m_params.fragment_length);
+				max_s = max(similarity[i][j], max_s);
+			}
+		}
+
+		for (i=0; i<num_a; ++i) {
+			for (j=0; j<num_b; ++j) {
+ 				m_weights[i][j] = (max_s - similarity[i][j]) / max_s;
+			}
+		}
+	}
+
+	// init weights by sequence identity
+// 	for (i=0; i<m_length_a; ++i) {
+// 		for (j=0; j<m_length_b; ++j) {
+// 			if ((*m_chain_a)[i].resCode() == (*m_chain_b)[j].resCode()) {
+// 				m_weights[i][j] = 1.0;
+// 			}
+// 			else {
+// 				m_weights[i][j] = 0;
+// 			}
+// 		}
+// 	}
 }
 
 double PairAlign::evaluate(const string &filename)
