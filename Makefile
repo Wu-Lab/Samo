@@ -3,8 +3,8 @@ LIBS =
 CFLAGS = -O3 -Wall
 
 #sources
-HEADERS = FibHeap.h  List.h  Matrix.h  MultiAlign.h  PairAlign.h  PDB.h  Samo.h  ProteinChain.h  SVD.h  Tree.h  Utils.h
-SRCS = FibHeap.cpp  MultiAlign.cpp  PairAlign.cpp  PDB.cpp  Samo.cpp  ProteinChain.cpp  SVD.cpp  Utils.cpp
+HEADERS = AlignParams.h  FibHeap.h  Matrix.h  MemLeak.h  MultiAlign.h  Options.h  PairAlign.h  PDB.h  ProteinChain.h  Samo.h  SVD.h  Utils.h
+SRCS = FibHeap.cpp  MultiAlign.cpp  Options.cpp  PairAlign.cpp  PDB.cpp  ProteinChain.cpp  Samo.cpp  SVD.cpp  Utils.cpp
 LIB = libsamo.a
 OBJS = $(SRCS:.cpp=.o)
 
